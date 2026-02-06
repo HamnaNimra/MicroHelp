@@ -17,7 +17,7 @@ class PostModel {
   final int? estimatedMinutes;
 
   const PostModel({
-    required this.id,
+    this.id = '',
     required this.type,
     required this.description,
     required this.userId,

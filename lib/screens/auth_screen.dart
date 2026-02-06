@@ -103,12 +103,14 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  icon: const Icon(Icons.g_mobiledata, size: 24),
-                  label: const Text('Continue with Google'),
-                ),
-                const SizedBox(height: 12),
+                if (context.read<AuthService>().canSignInWithGoogle)
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    icon: const Icon(Icons.g_mobiledata, size: 24),
+                    label: const Text('Continue with Google'),
+                  ),
+                if (context.read<AuthService>().canSignInWithGoogle)
+                  const SizedBox(height: 12),
                 if (context.read<AuthService>().canSignInWithApple)
                   OutlinedButton.icon(
                     onPressed: _loading ? null : _signInWithApple,
