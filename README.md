@@ -64,5 +64,4 @@ lib/
 ```
 
 ## License
-
-MIT
+No License 
