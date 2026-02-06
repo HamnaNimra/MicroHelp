@@ -50,16 +50,18 @@ class TaskCompletionScreen extends StatelessWidget {
                   )
                 else if (canComplete)
                   FilledButton(
-                    onPressed: () async {
-                      await firestore.completePost(postId);
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Task marked complete. Trust score will be updated.')),
-                        );
-                      }
-                    },
+                    onPressed: uid == null
+                        ? null
+                        : () async {
+                            await firestore.completePost(postId, uid);
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Task marked complete.')),
+                              );
+                            }
+                          },
                     child: const Text('Mark as completed'),
                   )
                 else

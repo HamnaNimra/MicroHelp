@@ -30,8 +30,31 @@ class FirestoreService {
     await _posts.doc(postId).update({'acceptedBy': userId});
   }
 
-  Future<void> completePost(String postId) async {
-    await _posts.doc(postId).update({'completed': true});
+  /// Completes the post. If [currentUserId] is the helper (acceptedBy),
+  /// also increments their trust score in a transaction (works on Spark plan without Cloud Functions).
+  Future<void> completePost(String postId, String currentUserId) async {
+    final postRef = _posts.doc(postId);
+    final postSnap = await postRef.get();
+    if (!postSnap.exists || postSnap.data() == null) return;
+    final data = postSnap.data()!;
+    if (data['completed'] == true) return;
+
+    final helperId = data['acceptedBy'] as String?;
+    final isHelper = helperId == currentUserId;
+
+    if (isHelper && helperId != null) {
+      final userRef = _firestore.collection('users').doc(helperId);
+      await _firestore.runTransaction((tx) async {
+        final post = await tx.get(postRef);
+        if (post.data()?['completed'] == true) return;
+        tx.update(postRef, {'completed': true});
+        final userSnap = await tx.get(userRef);
+        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
+        tx.update(userRef, {'trustScore': current + 1});
+      });
+    } else {
+      await postRef.update({'completed': true});
+    }
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getMessages(String postId) {
