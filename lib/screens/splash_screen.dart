@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import 'landing_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,15 +15,22 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToLanding();
+    _navigate();
   }
 
-  Future<void> _navigateToLanding() async {
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> _navigate() async {
+    await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LandingScreen()),
-    );
+    final auth = context.read<AuthService>();
+    if (auth.currentUser != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+      );
+    }
   }
 
   @override

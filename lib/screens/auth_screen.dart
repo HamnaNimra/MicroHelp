@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, this.initialSignUp = true});
@@ -11,6 +14,8 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   late bool _isSignUp;
+  bool _loading = false;
+  String? _error;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -42,6 +47,15 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_error != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _emailController,
@@ -68,8 +82,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: _submitEmailPassword,
-                  child: Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                  onPressed: _loading ? null : _submitEmailPassword,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
                 ),
                 const SizedBox(height: 16),
                 const Row(
@@ -84,16 +104,17 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
-                  onPressed: _signInWithGoogle,
+                  onPressed: _loading ? null : _signInWithGoogle,
                   icon: const Icon(Icons.g_mobiledata, size: 24),
                   label: const Text('Continue with Google'),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _signInWithApple,
-                  icon: const Icon(Icons.apple, size: 24),
-                  label: const Text('Continue with Apple'),
-                ),
+                if (context.read<AuthService>().canSignInWithApple)
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithApple,
+                    icon: const Icon(Icons.apple, size: 24),
+                    label: const Text('Continue with Apple'),
+                  ),
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () {
@@ -115,14 +136,69 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submitEmailPassword() async {
     if (!_formKey.currentState!.validate()) return;
-    // TODO: Integrate Firebase Auth (Phase 3)
+    setState(() { _loading = true; _error = null; });
+    try {
+      final auth = context.read<AuthService>();
+      final cred = _isSignUp
+          ? await auth.signUpWithEmail(
+              _emailController.text.trim(), _passwordController.text)
+          : await auth.signInWithEmail(
+              _emailController.text.trim(), _passwordController.text);
+      if (cred?.user != null) {
+        await auth.getOrCreateUser(cred!.user!);
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (r) => false,
+          );
+        }
+      }
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _signInWithGoogle() async {
-    // TODO: Integrate Google Sign-In (Phase 3)
+    setState(() { _loading = true; _error = null; });
+    try {
+      final auth = context.read<AuthService>();
+      final cred = await auth.signInWithGoogle();
+      if (cred?.user != null) {
+        await auth.getOrCreateUser(cred!.user!);
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (r) => false,
+          );
+        }
+      }
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _signInWithApple() async {
-    // TODO: Integrate Apple Sign-In (Phase 3)
+    setState(() { _loading = true; _error = null; });
+    try {
+      final auth = context.read<AuthService>();
+      final cred = await auth.signInWithApple();
+      if (cred?.user != null) {
+        await auth.getOrCreateUser(cred!.user!);
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (r) => false,
+          );
+        }
+      }
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }

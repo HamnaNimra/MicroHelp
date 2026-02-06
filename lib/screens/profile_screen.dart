@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
-import '../screens/landing_screen.dart';
+import 'landing_screen.dart';
 import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
 
