@@ -7,6 +7,7 @@ class UserModel {
   final int trustScore;
   final DateTime? lastActive;
   final GeoPoint? location;
+  final String? fcmToken;
 
   const UserModel({
     required this.id,
@@ -15,6 +16,7 @@ class UserModel {
     this.trustScore = 0,
     this.lastActive,
     this.location,
+    this.fcmToken,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -26,6 +28,7 @@ class UserModel {
       trustScore: (data['trustScore'] as int?) ?? 0,
       lastActive: (data['lastActive'] as Timestamp?)?.toDate(),
       location: data['location'] as GeoPoint?,
+      fcmToken: data['fcmToken'] as String?,
     );
   }
 
@@ -36,6 +39,7 @@ class UserModel {
       'trustScore': trustScore,
       if (lastActive != null) 'lastActive': Timestamp.fromDate(lastActive!),
       if (location != null) 'location': location,
+      if (fcmToken != null) 'fcmToken': fcmToken,
     };
   }
 }

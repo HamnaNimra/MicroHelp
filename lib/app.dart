@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/home_screen.dart';
@@ -13,7 +14,12 @@ class MicroHelpApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider(create: (_) => AuthService()),
+        Provider(create: (_) => NotificationService()),
+        ProxyProvider<NotificationService, AuthService>(
+          create: (context) => AuthService(context.read<NotificationService>()),
+          update: (context, notificationService, previous) =>
+            previous ?? AuthService(notificationService),
+        ),
         Provider(create: (_) => FirestoreService()),
       ],
       child: MaterialApp(
