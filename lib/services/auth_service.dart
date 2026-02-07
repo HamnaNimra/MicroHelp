@@ -56,10 +56,12 @@ class AuthService {
     }
 
     // New user - create document
+    final now = DateTime.now();
     final userModel = UserModel(
       id: firebaseUser.uid,
       name: firebaseUser.displayName ?? firebaseUser.email ?? 'User',
       profilePic: firebaseUser.photoURL,
+      createdAt: now,
     );
     await ref.set(userModel.toFirestore());
 
