@@ -1,5 +1,6 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 
 class AnalyticsService {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
@@ -81,6 +82,7 @@ class AnalyticsService {
     StackTrace? stack, {
     String? reason,
   }) async {
+    if (kIsWeb) return;
     await FirebaseCrashlytics.instance.recordError(
       exception,
       stack,
