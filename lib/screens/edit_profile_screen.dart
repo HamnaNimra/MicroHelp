@@ -6,8 +6,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import 'landing_screen.dart';
 
-const _genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Other'];
-const _ageRangeOptions = ['18-25', '26-35', '36-45', '46-60', '60+'];
+// Gender and birthday are set at sign-up and cannot be changed.
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.user});
