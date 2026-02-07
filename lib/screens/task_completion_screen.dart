@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
+import '../constants/badges.dart';
 import '../services/firestore_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
