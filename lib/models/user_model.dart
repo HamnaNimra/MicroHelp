@@ -12,6 +12,7 @@ class UserModel {
   final String? ageRange;
   final DateTime? createdAt;
   final bool idVerified;
+  final List<String> blockedUsers;
 
   const UserModel({
     required this.id,
@@ -25,6 +26,7 @@ class UserModel {
     this.ageRange,
     this.createdAt,
     this.idVerified = false,
+    this.blockedUsers = const [],
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -41,6 +43,7 @@ class UserModel {
       ageRange: data['ageRange'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       idVerified: (data['idVerified'] as bool?) ?? false,
+      blockedUsers: List<String>.from(data['blockedUsers'] as List? ?? []),
     );
   }
 
