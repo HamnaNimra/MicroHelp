@@ -292,14 +292,6 @@ class _ChatScreenState extends State<ChatScreen> {
     return 'Anonymous';
   }
 
-  /// Returns the initial letter for an avatar.
-  String _initial(UserModel? user) {
-    if (user != null && user.name.isNotEmpty) {
-      return user.name[0].toUpperCase();
-    }
-    return '?';
-  }
-
   @override
   Widget build(BuildContext context) {
     final firestore = context.watch<FirestoreService>();
