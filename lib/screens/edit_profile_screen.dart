@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
-const _genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+const _genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Other'];
 const _ageRangeOptions = ['18-25', '26-35', '36-45', '46-60', '60+'];
 
 class EditProfileScreen extends StatefulWidget {
@@ -16,6 +16,9 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _nameController;
+  late final TextEditingController _neighborhoodCtrl;
+  late final TextEditingController _bioCtrl;
+  late final TextEditingController _genderOtherCtrl;
   final _formKey = GlobalKey<FormState>();
   String? _gender;
   String? _ageRange;
@@ -25,13 +28,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user.name);
-    _gender = widget.user.gender;
+    _neighborhoodCtrl = TextEditingController(text: widget.user.neighborhood);
+    _bioCtrl = TextEditingController(text: widget.user.bio);
     _ageRange = widget.user.ageRange;
+
+    // If the stored gender is not in the standard options, treat it as "Other"
+    if (widget.user.gender != null &&
+        !_genderOptions.contains(widget.user.gender)) {
+      _gender = 'Other';
+      _genderOtherCtrl = TextEditingController(text: widget.user.gender);
+    } else {
+      _gender = widget.user.gender;
+      _genderOtherCtrl = TextEditingController();
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _neighborhoodCtrl.dispose();
+    _bioCtrl.dispose();
+    _genderOtherCtrl.dispose();
     super.dispose();
   }
 
@@ -40,12 +57,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _saving = true);
 
     try {
+      final effectiveGender =
+          _gender == 'Other' ? _genderOtherCtrl.text.trim() : _gender;
+
       final updates = <String, dynamic>{
         'name': _nameController.text.trim(),
         'lastActive': FieldValue.serverTimestamp(),
       };
-      if (_gender != null) updates['gender'] = _gender;
+      if (effectiveGender != null) updates['gender'] = effectiveGender;
       if (_ageRange != null) updates['ageRange'] = _ageRange;
+      if (_neighborhoodCtrl.text.trim().isNotEmpty) {
+        updates['neighborhood'] = _neighborhoodCtrl.text.trim();
+      }
+      if (_bioCtrl.text.trim().isNotEmpty) {
+        updates['bio'] = _bioCtrl.text.trim();
+      }
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -98,6 +124,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     .toList(),
                 onChanged: (v) => setState(() => _gender = v),
               ),
+              if (_gender == 'Other') ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _genderOtherCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Please specify',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) {
+                    if (_gender == 'Other' &&
+                        (v == null || v.trim().isEmpty)) {
+                      return 'Please specify your gender';
+                    }
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _ageRange,
@@ -109,6 +152,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     .map((a) => DropdownMenuItem(value: a, child: Text(a)))
                     .toList(),
                 onChanged: (v) => setState(() => _ageRange = v),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _neighborhoodCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Neighborhood or postal code',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _bioCtrl,
+                maxLines: 3,
+                maxLength: 200,
+                decoration: const InputDecoration(
+                  labelText: 'Short bio',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
               ),
               const SizedBox(height: 24),
               FilledButton(
