@@ -31,11 +31,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _uploadingPhoto = false;
   String? _profilePicUrl;
 
-  // Sharing preferences
-  late bool _shareName;
-  late bool _sharePhone;
-  late bool _sharePhoto;
-
   @override
   void initState() {
     super.initState();
@@ -44,9 +39,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioCtrl = TextEditingController(text: widget.user.bio);
     _phoneCtrl = TextEditingController(text: widget.user.phone);
     _profilePicUrl = widget.user.profilePic;
-    _shareName = widget.user.shareName;
-    _sharePhone = widget.user.sharePhone;
-    _sharePhoto = widget.user.sharePhoto;
   }
 
   @override
@@ -165,9 +157,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final updates = <String, dynamic>{
         'name': _nameController.text.trim(),
         'lastActive': FieldValue.serverTimestamp(),
-        'shareName': _shareName,
-        'sharePhone': _sharePhone,
-        'sharePhoto': _sharePhoto,
       };
       if (_neighborhoodCtrl.text.trim().isNotEmpty) {
         updates['neighborhood'] = _neighborhoodCtrl.text.trim();
@@ -529,47 +518,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   border: OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
-              ),
-
-              // Sharing preferences
-              const SizedBox(height: 16),
-              Text(
-                'Sharing preferences',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Choose what the helper or requester can see when you\'re in a conversation.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              SwitchListTile(
-                title: const Text('Share your name'),
-                subtitle: const Text('Show your display name to the other person'),
-                value: _shareName,
-                onChanged: (v) => setState(() => _shareName = v),
-                contentPadding: EdgeInsets.zero,
-              ),
-              SwitchListTile(
-                title: const Text('Share your phone'),
-                subtitle: const Text('Show your phone number to the other person'),
-                value: _sharePhone,
-                onChanged: _phoneCtrl.text.trim().isEmpty
-                    ? null
-                    : (v) => setState(() => _sharePhone = v),
-                contentPadding: EdgeInsets.zero,
-              ),
-              SwitchListTile(
-                title: const Text('Share your photo'),
-                subtitle: const Text('Show your profile picture to the other person'),
-                value: _sharePhoto,
-                onChanged: _profilePicUrl == null
-                    ? null
-                    : (v) => setState(() => _sharePhoto = v),
-                contentPadding: EdgeInsets.zero,
               ),
 
               // Linked accounts
