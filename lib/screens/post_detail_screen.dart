@@ -84,6 +84,24 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       appBar: AppBar(
         title: const Text('Post detail'),
         actions: [
+          if (_post != null && _post!.userId == uid && !_post!.completed)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit post',
+              onPressed: () async {
+                final edited = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => EditPostScreen(
+                      post: _post!,
+                      postId: widget.postId,
+                    ),
+                  ),
+                );
+                if (edited == true && mounted) {
+                  setState(() => _post = null); // Force reload
+                }
+              },
+            ),
           if (_post != null && _post!.userId != uid)
             PopupMenuButton<String>(
               onSelected: (value) {
