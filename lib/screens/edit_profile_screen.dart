@@ -199,6 +199,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _linkProvider(String provider) async {
+    try {
+      final auth = context.read<AuthService>();
+      if (provider == 'google') {
+        await auth.linkWithGoogle();
+      } else {
+        await auth.linkWithApple();
+      }
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${provider == 'google' ? 'Google' : 'Apple'} account linked!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        final message = switch (e.code) {
+          'credential-already-in-use' => 'This ${provider == 'google' ? 'Google' : 'Apple'} account is already linked to another user.',
+          'provider-already-linked' => '${provider == 'google' ? 'Google' : 'Apple'} is already linked to your account.',
+          _ => e.message ?? 'Failed to link account.',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to link account.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _unlinkProvider(String providerId) async {
+    final providers = context.read<AuthService>().getLinkedProviders();
+    if (providers.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must keep at least one sign-in method.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    try {
+      await context.read<AuthService>().unlinkProvider(providerId);
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${providerId == 'google.com' ? 'Google' : 'Apple'} account unlinked.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to unlink account.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _showDeleteAccountDialog() {
     final auth = context.read<AuthService>();
     final provider = auth.getSignInProvider();
@@ -505,6 +573,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ? null
                     : (v) => setState(() => _sharePhoto = v),
                 contentPadding: EdgeInsets.zero,
+              ),
+
+              // Linked accounts
+              const SizedBox(height: 24),
+              Text(
+                'Linked accounts',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Link additional sign-in methods to your account.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              _LinkedAccountTile(
+                providerName: 'Google',
+                providerId: 'google.com',
+                icon: Icons.g_mobiledata,
+                onLink: () => _linkProvider('google'),
+                onUnlink: () => _unlinkProvider('google.com'),
+              ),
+              _LinkedAccountTile(
+                providerName: 'Apple',
+                providerId: 'apple.com',
+                icon: Icons.apple,
+                onLink: () => _linkProvider('apple'),
+                onUnlink: () => _unlinkProvider('apple.com'),
               ),
 
               const SizedBox(height: 24),
