@@ -46,6 +46,26 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
 
   Future<void> _initLocation() async {
     setState(() => _loadingLocation = true);
+
+    // First, try to load saved location from Firestore as a quick fallback
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        final savedLocation = doc.data()?['location'] as GeoPoint?;
+        if (savedLocation != null && mounted) {
+          setState(() {
+            _gpsLocation = savedLocation;
+            _selectedLocation = savedLocation;
+          });
+        }
+      } catch (_) {}
+    }
+
+    // Then try to get fresh GPS location
     try {
       var permission = await Geolocator.checkPermission();
 
@@ -77,6 +97,8 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
+        // If we already have a saved location, don't show the error dialog
+        if (_selectedLocation != null) return;
         if (!mounted) return;
         await showDialog(
           context: context,
@@ -106,6 +128,7 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       }
 
       if (!await Geolocator.isLocationServiceEnabled()) {
+        if (_selectedLocation != null) return;
         if (!mounted) return;
         await showDialog(
           context: context,
@@ -141,8 +164,16 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
           _selectedLocation = geoPoint;
         });
       }
+
+      // Save fresh GPS location to user profile for future fallback
+      if (uid != null) {
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .update({'location': geoPoint}).catchError((_) {});
+      }
     } catch (_) {
-      // Location failed silently — user can still post globally
+      // GPS failed — we may still have the saved location from above
     } finally {
       if (mounted) setState(() => _loadingLocation = false);
     }
