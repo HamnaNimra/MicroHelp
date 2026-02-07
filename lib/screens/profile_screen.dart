@@ -87,6 +87,7 @@ class ProfileScreen extends StatelessWidget {
                 ProfileAvatar(
                   name: user.name,
                   profilePicUrl: user.profilePic,
+                  isVerified: user.idVerified,
                 ),
                 const SizedBox(height: 16),
                 Text(
