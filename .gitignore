@@ -35,5 +35,5 @@ yarn-error.log*
 
 # Environment files (local configs)
 /.env.*
-/.claude/
+/.claude/*
 nul
