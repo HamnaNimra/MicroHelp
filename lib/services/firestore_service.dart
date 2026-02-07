@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../models/message_model.dart';
+import '../models/report_model.dart';
 import '../constants/badges.dart';
 
 class FirestoreService {
