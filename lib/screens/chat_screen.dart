@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/message_model.dart';
+import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
@@ -25,25 +27,39 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   String? _otherUserId;
 
+  // User data for both participants
+  UserModel? _myUser;
+  UserModel? _otherUser;
+
   @override
   void initState() {
     super.initState();
-    _loadOtherUser();
+    _loadParticipants();
   }
 
-  Future<void> _loadOtherUser() async {
+  Future<void> _loadParticipants() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      final doc =
-          await context.read<FirestoreService>().getPost(widget.postId);
+      final firestore = context.read<FirestoreService>();
+      final doc = await firestore.getPost(widget.postId);
       final data = doc.data();
       if (data == null) return;
       final postOwner = data['userId'] as String?;
       final acceptedBy = data['acceptedBy'] as String?;
+      final otherId = (postOwner == uid) ? acceptedBy : postOwner;
+
+      if (otherId == null) return;
+
+      // Fetch both users
+      final myDoc = await firestore.getUser(uid);
+      final otherDoc = await firestore.getUser(otherId);
+
       if (mounted) {
         setState(() {
-          _otherUserId = (postOwner == uid) ? acceptedBy : postOwner;
+          _otherUserId = otherId;
+          if (myDoc.exists) _myUser = UserModel.fromFirestore(myDoc);
+          if (otherDoc.exists) _otherUser = UserModel.fromFirestore(otherDoc);
         });
       }
     } catch (_) {}
@@ -69,8 +85,10 @@ class _ChatScreenState extends State<ChatScreen> {
       timestamp: DateTime.now(),
     );
     try {
-      await context.read<FirestoreService>().sendMessage(widget.postId, message);
-      context.read<AnalyticsService>().logMessageSent();
+      final firestore = context.read<FirestoreService>();
+      final analytics = context.read<AnalyticsService>();
+      await firestore.sendMessage(widget.postId, message);
+      analytics.logMessageSent();
       _textController.clear();
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -142,6 +160,146 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _showSharingSettings() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final firestore = context.read<FirestoreService>();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: firestore.getChatSharing(widget.postId, uid),
+        builder: (ctx, snapshot) {
+          final data = snapshot.data?.data() ?? {};
+          final shareName = data['shareName'] as bool? ?? false;
+          final sharePhone = data['sharePhone'] as bool? ?? false;
+          final sharePhoto = data['sharePhoto'] as bool? ?? false;
+          final shareLocation = data['shareLocation'] as bool? ?? false;
+
+          final hasPhone = _myUser?.phone != null && _myUser!.phone!.isNotEmpty;
+          final hasPhoto = _myUser?.profilePic != null;
+
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sharing preferences',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Choose what the other person can see in this chat. '
+                  'Once you share your name, phone, or photo it cannot be un-shared.',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Share your name'),
+                  subtitle: Text(shareName
+                      ? 'Your name is visible (cannot be undone)'
+                      : 'Show your display name'),
+                  value: shareName,
+                  onChanged: shareName
+                      ? null
+                      : (v) {
+                          if (v) {
+                            firestore.updateChatSharing(
+                              widget.postId,
+                              uid,
+                              shareName: true,
+                            );
+                          }
+                        },
+                  contentPadding: EdgeInsets.zero,
+                ),
+                SwitchListTile(
+                  title: const Text('Share your phone'),
+                  subtitle: Text(!hasPhone
+                      ? 'Add a phone number in Edit Profile first'
+                      : sharePhone
+                          ? 'Your phone is visible (cannot be undone)'
+                          : 'Show your phone number'),
+                  value: sharePhone,
+                  onChanged: (sharePhone || !hasPhone)
+                      ? null
+                      : (v) {
+                          if (v) {
+                            firestore.updateChatSharing(
+                              widget.postId,
+                              uid,
+                              sharePhone: true,
+                            );
+                          }
+                        },
+                  contentPadding: EdgeInsets.zero,
+                ),
+                SwitchListTile(
+                  title: const Text('Share your photo'),
+                  subtitle: Text(!hasPhoto
+                      ? 'Add a profile picture in Edit Profile first'
+                      : sharePhoto
+                          ? 'Your photo is visible (cannot be undone)'
+                          : 'Show your profile picture'),
+                  value: sharePhoto,
+                  onChanged: (sharePhoto || !hasPhoto)
+                      ? null
+                      : (v) {
+                          if (v) {
+                            firestore.updateChatSharing(
+                              widget.postId,
+                              uid,
+                              sharePhoto: true,
+                            );
+                          }
+                        },
+                  contentPadding: EdgeInsets.zero,
+                ),
+                SwitchListTile(
+                  title: const Text('Share your location'),
+                  subtitle: Text(shareLocation
+                      ? 'Your approximate location is visible'
+                      : 'Show your approximate location'),
+                  value: shareLocation,
+                  onChanged: (v) {
+                    firestore.updateChatSharing(
+                      widget.postId,
+                      uid,
+                      shareLocation: v,
+                    );
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Returns the display name or "Anonymous" based on sharing prefs.
+  String _displayName(UserModel? user, Map<String, dynamic> sharing) {
+    final shared = sharing['shareName'] as bool? ?? false;
+    if (shared && user != null) return user.name;
+    return 'Anonymous';
+  }
+
+  /// Returns the initial letter for an avatar.
+  String _initial(UserModel? user) {
+    if (user != null && user.name.isNotEmpty) {
+      return user.name[0].toUpperCase();
+    }
+    return '?';
+  }
+
   @override
   Widget build(BuildContext context) {
     final firestore = context.watch<FirestoreService>();
@@ -149,8 +307,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: _otherUserId == null
+            ? const Text('Chat')
+            : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: firestore.getChatSharing(
+                    widget.postId, _otherUserId!),
+                builder: (context, snapshot) {
+                  final data = snapshot.data?.data() ?? {};
+                  final name = _displayName(_otherUser, data);
+                  return Text(name);
+                },
+              ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'Sharing settings',
+            onPressed: _showSharingSettings,
+          ),
           IconButton(
             icon: const Icon(Icons.check_circle_outline),
             onPressed: () => Navigator.of(context).push(
@@ -195,90 +368,258 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder(
-              stream: firestore.getMessages(widget.postId),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const ErrorView(
-                    message: 'Could not load messages. Check your connection.',
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const LoadingView(message: 'Loading messages...');
-                }
-                final docs = snapshot.data!.docs;
-                final messages = docs
-                    .map((d) => MessageModel.fromFirestore(d))
-                    .toList();
+      body: uid == null
+          ? const SizedBox.shrink()
+          : _otherUserId == null
+              ? const LoadingView(message: 'Loading chat...')
+              : _ChatBody(
+                  postId: widget.postId,
+                  uid: uid,
+                  otherUserId: _otherUserId!,
+                  myUser: _myUser,
+                  otherUser: _otherUser,
+                  textController: _textController,
+                  scrollController: _scrollController,
+                  onSend: _send,
+                  firestore: firestore,
+                ),
+    );
+  }
+}
 
-                if (messages.isEmpty) {
-                  return const EmptyStateView(
-                    icon: Icons.chat_bubble_outline,
-                    title: 'No messages yet',
-                    subtitle: 'Say hello!',
-                  );
-                }
+/// The body of the chat, wrapped in StreamBuilders for real-time sharing prefs.
+class _ChatBody extends StatelessWidget {
+  const _ChatBody({
+    required this.postId,
+    required this.uid,
+    required this.otherUserId,
+    required this.myUser,
+    required this.otherUser,
+    required this.textController,
+    required this.scrollController,
+    required this.onSend,
+    required this.firestore,
+  });
 
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, i) {
-                    final msg = messages[i];
-                    // System messages (e.g. user deleted account)
-                    if (msg.senderId == 'system') {
-                      return Center(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            msg.text,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onErrorContainer,
-                                ),
-                          ),
-                        ),
-                      );
-                    }
-                    return MessageBubble(
-                      message: msg,
-                      isMe: msg.senderId == uid,
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
+  final String postId;
+  final String uid;
+  final String otherUserId;
+  final UserModel? myUser;
+  final UserModel? otherUser;
+  final TextEditingController textController;
+  final ScrollController scrollController;
+  final VoidCallback onSend;
+  final FirestoreService firestore;
+
+  String _initial(UserModel? user) {
+    if (user != null && user.name.isNotEmpty) {
+      return user.name[0].toUpperCase();
+    }
+    return '?';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Listen to both users' sharing prefs in real time
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: firestore.getChatSharing(postId, uid),
+      builder: (context, myShareSnap) {
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: firestore.getChatSharing(postId, otherUserId),
+          builder: (context, otherShareSnap) {
+            final mySharing = myShareSnap.data?.data() ?? {};
+            final otherSharing = otherShareSnap.data?.data() ?? {};
+
+            // Determine what the other user shares with me
+            final otherSharesName =
+                otherSharing['shareName'] as bool? ?? false;
+            final otherSharesPhoto =
+                otherSharing['sharePhoto'] as bool? ?? false;
+            final otherSharesPhone =
+                otherSharing['sharePhone'] as bool? ?? false;
+            final otherSharesLocation =
+                otherSharing['shareLocation'] as bool? ?? false;
+
+            return Column(
               children: [
+                // Info bar showing what the other user has shared
+                _SharedInfoBar(
+                  otherUser: otherUser,
+                  otherSharesName: otherSharesName,
+                  otherSharesPhone: otherSharesPhone,
+                  otherSharesLocation: otherSharesLocation,
+                ),
                 Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    decoration: const InputDecoration(
-                      hintText: 'Message',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _send(),
+                  child: StreamBuilder(
+                    stream: firestore.getMessages(postId),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const ErrorView(
+                          message:
+                              'Could not load messages. Check your connection.',
+                        );
+                      }
+                      if (!snapshot.hasData) {
+                        return const LoadingView(
+                            message: 'Loading messages...');
+                      }
+                      final docs = snapshot.data!.docs;
+                      final messages = docs
+                          .map((d) => MessageModel.fromFirestore(d))
+                          .toList();
+
+                      if (messages.isEmpty) {
+                        return const EmptyStateView(
+                          icon: Icons.chat_bubble_outline,
+                          title: 'No messages yet',
+                          subtitle: 'Say hello!',
+                        );
+                      }
+
+                      return ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: messages.length,
+                        itemBuilder: (context, i) {
+                          final msg = messages[i];
+                          // System messages
+                          if (msg.senderId == 'system') {
+                            return Center(
+                              child: Container(
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .errorContainer,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  msg.text,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onErrorContainer,
+                                      ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          final isMe = msg.senderId == uid;
+                          final senderUser = isMe ? myUser : otherUser;
+                          final senderSharing =
+                              isMe ? mySharing : otherSharing;
+                          final sharesPhoto =
+                              isMe ? (mySharing['sharePhoto'] as bool? ?? false)
+                                  : otherSharesPhoto;
+
+                          return MessageBubble(
+                            message: msg,
+                            isMe: isMe,
+                            initial: _initial(senderUser),
+                            profilePicUrl: sharesPhoto
+                                ? senderUser?.profilePic
+                                : null,
+                            senderName: (senderSharing['shareName']
+                                        as bool? ??
+                                    false)
+                                ? senderUser?.name
+                                : null,
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _send,
-                  icon: const Icon(Icons.send),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: textController,
+                          decoration: const InputDecoration(
+                            hintText: 'Message',
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => onSend(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        onPressed: onSend,
+                        icon: const Icon(Icons.send),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// A compact info bar showing what the other user has shared (phone, location).
+class _SharedInfoBar extends StatelessWidget {
+  const _SharedInfoBar({
+    required this.otherUser,
+    required this.otherSharesName,
+    required this.otherSharesPhone,
+    required this.otherSharesLocation,
+  });
+
+  final UserModel? otherUser;
+  final bool otherSharesName;
+  final bool otherSharesPhone;
+  final bool otherSharesLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = <Widget>[];
+
+    if (otherSharesPhone &&
+        otherUser?.phone != null &&
+        otherUser!.phone!.isNotEmpty) {
+      chips.add(Chip(
+        avatar: const Icon(Icons.phone, size: 16),
+        label: Text(otherUser!.phone!),
+        visualDensity: VisualDensity.compact,
+      ));
+    }
+
+    if (otherSharesLocation &&
+        otherUser?.neighborhood != null &&
+        otherUser!.neighborhood!.isNotEmpty) {
+      chips.add(Chip(
+        avatar: const Icon(Icons.location_on, size: 16),
+        label: Text(otherUser!.neighborhood!),
+        visualDensity: VisualDensity.compact,
+      ));
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Wrap(
+        spacing: 8,
+        children: chips,
       ),
     );
   }
