@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
@@ -136,6 +137,33 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  String _friendlyAuthError(Object e) {
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'invalid-email':
+          return 'That email address is not valid.';
+        case 'user-disabled':
+          return 'This account has been disabled. Contact support.';
+        case 'user-not-found':
+          return 'No account found with that email. Try signing up instead.';
+        case 'wrong-password':
+        case 'invalid-credential':
+          return 'Invalid email or password. Please try again.';
+        case 'email-already-in-use':
+          return 'An account already exists with that email. Try signing in instead.';
+        case 'weak-password':
+          return 'Password is too weak. Use at least 6 characters.';
+        case 'too-many-requests':
+          return 'Too many attempts. Please wait a moment and try again.';
+        case 'network-request-failed':
+          return 'Network error. Check your connection and try again.';
+        default:
+          return e.message ?? 'Authentication failed. Please try again.';
+      }
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
   Future<void> _submitEmailPassword() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
@@ -155,8 +183,8 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
       }
-    } on Exception catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -176,8 +204,8 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
       }
-    } on Exception catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -197,8 +225,8 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
       }
-    } on Exception catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
