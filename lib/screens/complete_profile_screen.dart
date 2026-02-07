@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
+import '../widgets/location_autocomplete_field.dart';
 import 'home_screen.dart';
 
 const _genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Other'];
@@ -153,14 +154,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 const SizedBox(height: 16),
 
                 // Neighborhood
-                TextFormField(
+                LocationAutocompleteField(
                   controller: _neighborhoodCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Neighborhood or postal code',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                    helperText: 'Helps connect you with nearby neighbors',
-                  ),
+                  helperText: 'Helps connect you with nearby neighbors',
                 ),
                 const SizedBox(height: 16),
 
