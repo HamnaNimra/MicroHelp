@@ -25,6 +25,9 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   http: ^1.2.2
+  # Image & storage
+  image_picker: ^1.1.2
+  firebase_storage: ^12.4.4
   # State management
   provider: ^6.1.2
   shared_preferences: ^2.5.4
