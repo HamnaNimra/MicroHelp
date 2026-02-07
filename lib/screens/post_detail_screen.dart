@@ -97,13 +97,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           post = PostModel.fromFirestore(snapshot.data!);
         }
 
-        final isOwner = post != null && post.userId == uid;
+        final isOwner = post != null && uid != null && post.userId == uid;
+        final isNotOwner = post != null && uid != null && post.userId != uid;
 
         return Scaffold(
           appBar: AppBar(
             title: const Text('Post detail'),
             actions: [
-              if (isOwner && !post!.completed)
+              // Owner only: edit (when post not completed)
+              if (isOwner && !post.completed)
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit post',
@@ -111,7 +113,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     final edited = await Navigator.of(context).push<bool>(
                       MaterialPageRoute(
                         builder: (_) => EditPostScreen(
-                          post: post!,
+                          post: post,
                           postId: widget.postId,
                         ),
                       ),
@@ -121,20 +123,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     }
                   },
                 ),
-              if (post != null && !isOwner)
+              // Non-owner only: report/block (never show for own post)
+              if (isNotOwner)
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'report') {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ReportScreen(
-                            reportedUserId: post!.userId,
+                            reportedUserId: post.userId,
                             reportedPostId: widget.postId,
                           ),
                         ),
                       );
                     } else if (value == 'block') {
-                      _blockUser(post!.userId);
+                      _blockUser(post.userId);
                     }
                   },
                   itemBuilder: (_) => const [
@@ -240,7 +243,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           if (canAccept)
             FilledButton(
               onPressed: () async {
-                if (uid == null) return;
                 final firestore = context.read<FirestoreService>();
                 final confirmed = await showDialog<bool>(
                   context: context,
