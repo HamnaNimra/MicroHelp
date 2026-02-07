@@ -11,6 +11,7 @@ class UserModel {
   final String? gender;
   final String? ageRange;
   final DateTime? createdAt;
+  final bool idVerified;
 
   const UserModel({
     required this.id,
@@ -23,6 +24,7 @@ class UserModel {
     this.gender,
     this.ageRange,
     this.createdAt,
+    this.idVerified = false,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -38,6 +40,7 @@ class UserModel {
       gender: data['gender'] as String?,
       ageRange: data['ageRange'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      idVerified: (data['idVerified'] as bool?) ?? false,
     );
   }
 
