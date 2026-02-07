@@ -6,6 +6,7 @@ import '../models/post_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/post_type_chip.dart';
 import 'chat_screen.dart';
 
 class PostDetailScreen extends StatelessWidget {
@@ -47,15 +48,7 @@ class PostDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Chip(
-                  label: Text(
-                    post.type == PostType.request ? 'Request' : 'Offer',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  backgroundColor: post.type == PostType.request
-                      ? Colors.orange
-                      : Colors.green,
-                ),
+                PostTypeChip(type: post.type),
                 const SizedBox(height: 16),
                 Text(
                   post.description,

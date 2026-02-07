@@ -10,6 +10,7 @@ import '../utils/geo_utils.dart';
 import '../widgets/error_view.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/post_card.dart';
 import 'post_detail_screen.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -221,63 +222,13 @@ class _FeedScreenState extends State<FeedScreen> {
                   itemCount: filtered.length,
                   itemBuilder: (context, i) {
                     final item = filtered[i];
-                    final post = item.post;
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      child: ListTile(
-                        title: Row(
-                          children: [
-                            Text(
-                              post.type == PostType.request
-                                  ? 'Request'
-                                  : 'Offer',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: post.type == PostType.request
-                                    ? Colors.orange
-                                    : Colors.green,
-                              ),
-                            ),
-                            if (post.global) ...[
-                              const SizedBox(width: 8),
-                              Icon(Icons.public,
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.outline),
-                            ],
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              post.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (item.distance != null)
-                              Text(
-                                item.distance! < 1
-                                    ? '${(item.distance! * 1000).toStringAsFixed(0)} m away'
-                                    : '${item.distance!.toStringAsFixed(1)} km away',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    ),
-                              ),
-                          ],
-                        ),
-                        trailing: post.estimatedMinutes != null
-                            ? Text('~${post.estimatedMinutes} min')
-                            : null,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                PostDetailScreen(postId: post.id),
-                          ),
+                    return PostCard(
+                      post: item.post,
+                      distanceKm: item.distance,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              PostDetailScreen(postId: item.post.id),
                         ),
                       ),
                     );

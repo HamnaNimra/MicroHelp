@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/trust_score_badge.dart';
 
 class BadgesScreen extends StatelessWidget {
   const BadgesScreen({super.key, required this.userId});
@@ -43,26 +44,9 @@ class BadgesScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            Icon(Icons.verified_user,
-                                size: 48,
-                                color: Theme.of(context).colorScheme.primary),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Trust score',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text(
-                              '$trustScore',
-                              style: Theme.of(context).textTheme.headlineMedium,
-                            ),
-                          ],
-                        ),
-                      ),
+                    TrustScoreBadge(
+                      score: trustScore,
+                      size: TrustScoreBadgeSize.large,
                     ),
                     const SizedBox(height: 24),
                     Text(

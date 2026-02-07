@@ -6,6 +6,7 @@ import '../services/firestore_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/message_bubble.dart';
 import 'task_completion_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -103,31 +104,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, i) {
                     final msg = messages[i];
-                    final isMe = msg.senderId == uid;
-                    return Align(
-                      alignment:
-                          isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Theme.of(context).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(msg.text),
-                            Text(
-                              '${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
+                    return MessageBubble(
+                      message: msg,
+                      isMe: msg.senderId == uid,
                     );
                   },
                 );

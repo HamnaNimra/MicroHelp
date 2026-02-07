@@ -5,6 +5,8 @@ import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/profile_avatar.dart';
+import '../widgets/trust_score_badge.dart';
 import 'landing_screen.dart';
 import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
@@ -63,16 +65,9 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 16),
-                CircleAvatar(
-                  radius: 48,
-                  backgroundImage:
-                      user.profilePic != null ? NetworkImage(user.profilePic!) : null,
-                  child: user.profilePic == null
-                      ? Text(
-                          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                          style: Theme.of(context).textTheme.headlineLarge,
-                        )
-                      : null,
+                ProfileAvatar(
+                  name: user.name,
+                  profilePicUrl: user.profilePic,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -80,18 +75,7 @@ class ProfileScreen extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.verified_user,
-                        size: 20, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Trust score: ${user.trustScore}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
-                ),
+                TrustScoreBadge(score: user.trustScore),
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).push(
