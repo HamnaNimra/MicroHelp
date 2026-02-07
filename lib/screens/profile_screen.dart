@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../widgets/error_view.dart';
@@ -15,6 +16,107 @@ import 'verify_identity_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final passwordCtrl = TextEditingController();
+    bool deleting = false;
+    String? error;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Delete account?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This will permanently delete your account and all your data. '
+                'This action cannot be undone.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: true,
+                enabled: !deleting,
+                decoration: InputDecoration(
+                  labelText: 'Enter your password to confirm',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock_outlined),
+                  errorText: error,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: deleting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: deleting
+                  ? null
+                  : () async {
+                      final password = passwordCtrl.text;
+                      if (password.isEmpty) {
+                        setDialogState(() => error = 'Enter your password');
+                        return;
+                      }
+                      setDialogState(() {
+                        deleting = true;
+                        error = null;
+                      });
+                      try {
+                        await context.read<AuthService>().deleteAccount(password);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const LandingScreen()),
+                            (r) => false,
+                          );
+                        }
+                      } on FirebaseAuthException catch (e) {
+                        setDialogState(() {
+                          deleting = false;
+                          switch (e.code) {
+                            case 'wrong-password':
+                            case 'invalid-credential':
+                              error = 'Incorrect password. Please try again.';
+                            case 'too-many-requests':
+                              error = 'Too many attempts. Try again later.';
+                            default:
+                              error = e.message ?? 'Failed to delete account.';
+                          }
+                        });
+                      } catch (_) {
+                        setDialogState(() {
+                          deleting = false;
+                          error = 'Something went wrong. Please try again.';
+                        });
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: deleting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Delete permanently'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -178,6 +280,17 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('View tutorial'),
+                ),
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => _showDeleteAccountDialog(context),
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('Delete account'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
                 ),
               ],
             ),
