@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../models/user_model.dart';
+import '../services/auth_service.dart';
+import 'landing_screen.dart';
 
 const _genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Other'];
 const _ageRangeOptions = ['18-25', '26-35', '36-45', '46-60', '60+'];
@@ -182,6 +186,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text('Save'),
+              ),
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _showDeleteAccountDialog,
+                icon: const Icon(Icons.delete_forever),
+                label: const Text('Delete account'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
               ),
             ],
           ),
