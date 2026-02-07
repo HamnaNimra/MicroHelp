@@ -99,21 +99,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
         final isOwner = post != null && uid != null && post.userId == uid;
         final isNotOwner = post != null && uid != null && post.userId != uid;
+        final postData = post; // non-null in action branches below
 
         return Scaffold(
           appBar: AppBar(
             title: const Text('Post detail'),
             actions: [
               // Owner only: edit (when post not completed)
-              if (isOwner && !post.completed)
+              if (isOwner && postData != null && !postData.completed)
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit post',
                   onPressed: () async {
+                    final p = postData;
                     final edited = await Navigator.of(context).push<bool>(
                       MaterialPageRoute(
                         builder: (_) => EditPostScreen(
-                          post: post,
+                          post: p,
                           postId: widget.postId,
                         ),
                       ),
@@ -124,20 +126,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   },
                 ),
               // Non-owner only: report/block (never show for own post)
-              if (isNotOwner)
+              if (isNotOwner && postData != null)
                 PopupMenuButton<String>(
                   onSelected: (value) {
+                    final p = postData;
                     if (value == 'report') {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ReportScreen(
-                            reportedUserId: post.userId,
+                            reportedUserId: p.userId,
                             reportedPostId: widget.postId,
                           ),
                         ),
                       );
                     } else if (value == 'block') {
-                      _blockUser(post.userId);
+                      _blockUser(p.userId);
                     }
                   },
                   itemBuilder: (_) => const [
