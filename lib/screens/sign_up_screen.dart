@@ -454,6 +454,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           return 'Invalid email or password. Please try again.';
         case 'email-already-in-use':
           return 'An account already exists with that email. Try signing in instead.';
+        case 'account-exists-with-different-credential':
+          return 'An account already exists with that email using a different sign-in method. '
+              'Sign in with your original method, then link this provider in Edit Profile.';
+        case 'credential-already-in-use':
+          return 'This credential is already linked to another account.';
         case 'weak-password':
           return 'Password is too weak. Use at least 6 characters.';
         case 'too-many-requests':
