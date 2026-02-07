@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/storage_service.dart';
+import '../widgets/profile_avatar.dart';
 import 'landing_screen.dart';
 
 // Gender and birthday are set at sign-up and cannot be changed.
@@ -21,8 +24,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _neighborhoodCtrl;
   late final TextEditingController _bioCtrl;
+  late final TextEditingController _phoneCtrl;
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
+  bool _uploadingPhoto = false;
+  String? _profilePicUrl;
+
+  // Sharing preferences
+  late bool _shareName;
+  late bool _sharePhone;
+  late bool _sharePhoto;
 
   @override
   void initState() {
@@ -30,6 +41,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: widget.user.name);
     _neighborhoodCtrl = TextEditingController(text: widget.user.neighborhood);
     _bioCtrl = TextEditingController(text: widget.user.bio);
+    _phoneCtrl = TextEditingController(text: widget.user.phone);
+    _profilePicUrl = widget.user.profilePic;
+    _shareName = widget.user.shareName;
+    _sharePhone = widget.user.sharePhone;
+    _sharePhoto = widget.user.sharePhoto;
   }
 
   @override
@@ -37,7 +53,107 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _neighborhoodCtrl.dispose();
     _bioCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final picker = ImagePicker();
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Profile picture'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, ImageSource.camera),
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Camera'),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, ImageSource.gallery),
+            icon: const Icon(Icons.photo_library),
+            label: const Text('Gallery'),
+          ),
+        ],
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final storage = context.read<StorageService>();
+      final url = await storage.uploadProfilePicture(
+        userId: widget.user.id,
+        bytes: bytes,
+      );
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.user.id)
+          .update({'profilePic': url});
+      if (mounted) setState(() => _profilePicUrl = url);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to upload photo. Try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  Future<void> _deletePhoto() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove profile picture?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final storage = context.read<StorageService>();
+      await storage.deleteProfilePicture(widget.user.id);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.user.id)
+          .update({'profilePic': FieldValue.delete()});
+      if (mounted) setState(() => _profilePicUrl = null);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to remove photo. Try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 
   Future<void> _save() async {
@@ -48,12 +164,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final updates = <String, dynamic>{
         'name': _nameController.text.trim(),
         'lastActive': FieldValue.serverTimestamp(),
+        'shareName': _shareName,
+        'sharePhone': _sharePhone,
+        'sharePhoto': _sharePhoto,
       };
       if (_neighborhoodCtrl.text.trim().isNotEmpty) {
         updates['neighborhood'] = _neighborhoodCtrl.text.trim();
       }
       if (_bioCtrl.text.trim().isNotEmpty) {
         updates['bio'] = _bioCtrl.text.trim();
+      }
+      if (_phoneCtrl.text.trim().isNotEmpty) {
+        updates['phone'] = _phoneCtrl.text.trim();
+      } else {
+        updates['phone'] = FieldValue.delete();
       }
 
       await FirebaseFirestore.instance
@@ -210,6 +334,66 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Profile picture section
+              Center(
+                child: Stack(
+                  children: [
+                    ProfileAvatar(
+                      name: _nameController.text.isNotEmpty
+                          ? _nameController.text
+                          : widget.user.name,
+                      profilePicUrl: _profilePicUrl,
+                      radius: 56,
+                    ),
+                    if (_uploadingPhoto)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          onPressed: _uploadingPhoto ? null : _pickAndUploadPhoto,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_profilePicUrl != null) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: _uploadingPhoto ? null : _deletePhoto,
+                    child: const Text('Remove photo'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+
+              // Name
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -220,6 +404,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
               ),
               const SizedBox(height: 16),
+
+              // Phone number
+              TextFormField(
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone number (optional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone_outlined),
+                  helperText: 'Only shared if you choose to below',
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Gender (read-only)
               TextFormField(
                 initialValue: widget.user.gender ?? 'Not set',
                 readOnly: true,
@@ -231,6 +430,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Age range (read-only)
               TextFormField(
                 initialValue: widget.user.ageRange ?? 'Not set',
                 readOnly: true,
@@ -242,6 +443,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Neighborhood
               TextFormField(
                 controller: _neighborhoodCtrl,
                 decoration: const InputDecoration(
@@ -250,6 +453,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Bio
               TextFormField(
                 controller: _bioCtrl,
                 maxLines: 3,
@@ -260,6 +465,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   alignLabelWithHint: true,
                 ),
               ),
+
+              // Sharing preferences
+              const SizedBox(height: 16),
+              Text(
+                'Sharing preferences',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose what the helper or requester can see when you\'re in a conversation.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              SwitchListTile(
+                title: const Text('Share your name'),
+                subtitle: const Text('Show your display name to the other person'),
+                value: _shareName,
+                onChanged: (v) => setState(() => _shareName = v),
+                contentPadding: EdgeInsets.zero,
+              ),
+              SwitchListTile(
+                title: const Text('Share your phone'),
+                subtitle: const Text('Show your phone number to the other person'),
+                value: _sharePhone,
+                onChanged: _phoneCtrl.text.trim().isEmpty
+                    ? null
+                    : (v) => setState(() => _sharePhone = v),
+                contentPadding: EdgeInsets.zero,
+              ),
+              SwitchListTile(
+                title: const Text('Share your photo'),
+                subtitle: const Text('Show your profile picture to the other person'),
+                value: _sharePhoto,
+                onChanged: _profilePicUrl == null
+                    ? null
+                    : (v) => setState(() => _sharePhoto = v),
+                contentPadding: EdgeInsets.zero,
+              ),
+
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _saving ? null : _save,
