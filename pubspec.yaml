@@ -15,11 +15,19 @@ dependencies:
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
   firebase_messaging: ^16.1.1
+  firebase_analytics: ^12.1.1
+  firebase_crashlytics: ^5.0.7
   # Auth providers
   # google_sign_in: ^7.2.0  # Not supported on Windows desktop
   sign_in_with_apple: ^7.0.1
-  # Location & misc
+  # Location & maps
   geolocator: ^14.0.2
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  http: ^1.2.2
+  # Image & storage
+  image_picker: ^1.1.2
+  firebase_storage: ^13.0.6
   # State management
   provider: ^6.1.2
   shared_preferences: ^2.5.4

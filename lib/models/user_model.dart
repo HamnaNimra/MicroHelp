@@ -10,8 +10,12 @@ class UserModel {
   final String? fcmToken;
   final String? gender;
   final String? ageRange;
+  final DateTime? birthday;
+  final String? neighborhood;
+  final String? bio;
   final DateTime? createdAt;
   final bool idVerified;
+  final List<String> blockedUsers;
 
   const UserModel({
     required this.id,
@@ -23,8 +27,12 @@ class UserModel {
     this.fcmToken,
     this.gender,
     this.ageRange,
+    this.birthday,
+    this.neighborhood,
+    this.bio,
     this.createdAt,
     this.idVerified = false,
+    this.blockedUsers = const [],
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -39,8 +47,12 @@ class UserModel {
       fcmToken: data['fcmToken'] as String?,
       gender: data['gender'] as String?,
       ageRange: data['ageRange'] as String?,
+      birthday: (data['birthday'] as Timestamp?)?.toDate(),
+      neighborhood: data['neighborhood'] as String?,
+      bio: data['bio'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       idVerified: (data['idVerified'] as bool?) ?? false,
+      blockedUsers: List<String>.from(data['blockedUsers'] as List? ?? []),
     );
   }
 
@@ -54,8 +66,12 @@ class UserModel {
       if (fcmToken != null) 'fcmToken': fcmToken,
       if (gender != null) 'gender': gender,
       if (ageRange != null) 'ageRange': ageRange,
+      if (birthday != null) 'birthday': Timestamp.fromDate(birthday!),
+      if (neighborhood != null) 'neighborhood': neighborhood,
+      if (bio != null) 'bio': bio,
       if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
       'idVerified': idVerified,
+      if (blockedUsers.isNotEmpty) 'blockedUsers': blockedUsers,
     };
   }
 

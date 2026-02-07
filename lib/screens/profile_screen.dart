@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../widgets/error_view.dart';
@@ -12,9 +13,136 @@ import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
 import 'onboarding_screen.dart';
 import 'verify_identity_screen.dart';
+import 'my_posts_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onNavigateToCreatePost});
+
+  final VoidCallback? onNavigateToCreatePost;
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final auth = context.read<AuthService>();
+    final provider = auth.getSignInProvider();
+    final isPasswordUser = provider == 'password';
+
+    final passwordCtrl = TextEditingController();
+    bool deleting = false;
+    String? error;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Delete account?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This will permanently delete your account and all your data. '
+                'This action cannot be undone.',
+              ),
+              if (isPasswordUser) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  enabled: !deleting,
+                  decoration: InputDecoration(
+                    labelText: 'Enter your password to confirm',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    errorText: error,
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                Text(
+                  provider == 'google.com'
+                      ? 'You will be asked to sign in with Google to confirm.'
+                      : 'You will be asked to sign in with Apple to confirm.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                ],
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: deleting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: deleting
+                  ? null
+                  : () async {
+                      if (isPasswordUser && passwordCtrl.text.isEmpty) {
+                        setDialogState(() => error = 'Enter your password');
+                        return;
+                      }
+                      setDialogState(() {
+                        deleting = true;
+                        error = null;
+                      });
+                      try {
+                        if (isPasswordUser) {
+                          await auth.deleteAccount(passwordCtrl.text);
+                        } else {
+                          await auth.deleteAccountWithProvider();
+                        }
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const LandingScreen()),
+                            (r) => false,
+                          );
+                        }
+                      } on FirebaseAuthException catch (e) {
+                        setDialogState(() {
+                          deleting = false;
+                          switch (e.code) {
+                            case 'wrong-password':
+                            case 'invalid-credential':
+                              error = 'Incorrect password. Please try again.';
+                            case 'too-many-requests':
+                              error = 'Too many attempts. Try again later.';
+                            default:
+                              error = e.message ?? 'Failed to delete account.';
+                          }
+                        });
+                      } catch (_) {
+                        setDialogState(() {
+                          deleting = false;
+                          error = 'Something went wrong. Please try again.';
+                        });
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: deleting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(isPasswordUser
+                      ? 'Delete permanently'
+                      : 'Continue with ${provider == 'google.com' ? 'Google' : 'Apple'}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +241,11 @@ class ProfileScreen extends StatelessWidget {
                         avatar: const Icon(Icons.cake, size: 18),
                         label: Text(user.ageRange!),
                       ),
+                    if (user.neighborhood != null)
+                      Chip(
+                        avatar: const Icon(Icons.location_on, size: 18),
+                        label: Text(user.neighborhood!),
+                      ),
                     if (user.accountAge != null)
                       Chip(
                         avatar: const Icon(Icons.schedule, size: 18),
@@ -120,6 +253,14 @@ class ProfileScreen extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (user.bio != null && user.bio!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    user.bio!,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).push(
@@ -129,6 +270,23 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.edit),
                   label: const Text('Edit profile'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MyPostsScreen(
+                        onNavigateToCreatePost: onNavigateToCreatePost != null
+                            ? () {
+                                Navigator.of(context).pop();
+                                onNavigateToCreatePost!();
+                              }
+                            : null,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.post_add),
+                  label: const Text('My Posts'),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -165,6 +323,17 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('View tutorial'),
+                ),
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => _showDeleteAccountDialog(context),
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('Delete account'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
                 ),
               ],
             ),

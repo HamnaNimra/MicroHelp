@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_screen.dart';
+import 'sign_up_screen.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -38,26 +39,22 @@ class LandingScreen extends StatelessWidget {
               ),
               const Spacer(),
               FilledButton(
-                onPressed: () => _navigateToAuth(context, isSignUp: true),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                ),
                 child: const Text('Sign Up'),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () => _navigateToAuth(context, isSignUp: false),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AuthScreen()),
+                ),
                 child: const Text('Sign In'),
               ),
               const SizedBox(height: 48),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _navigateToAuth(BuildContext context, {required bool isSignUp}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AuthScreen(initialSignUp: isSignUp),
       ),
     );
   }

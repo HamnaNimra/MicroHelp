@@ -4,6 +4,9 @@ class PreferencesService {
   static const _keyShowGlobal = 'feed_show_global';
   static const _keyLocalRadius = 'feed_local_radius';
   static const _keyOnboardingCompleted = 'onboarding_completed';
+  static const _keySeenFeedTip = 'tips_seen_feed';
+  static const _keySeenInboxTip = 'tips_seen_inbox';
+  static const _keySeenMyPostsTip = 'tips_seen_my_posts';
 
   late final SharedPreferences _prefs;
 
@@ -21,4 +24,13 @@ class PreferencesService {
       _prefs.getBool(_keyOnboardingCompleted) ?? false;
   set hasCompletedOnboarding(bool v) =>
       _prefs.setBool(_keyOnboardingCompleted, v);
+
+  bool get hasSeenFeedTip => _prefs.getBool(_keySeenFeedTip) ?? false;
+  set hasSeenFeedTip(bool v) => _prefs.setBool(_keySeenFeedTip, v);
+
+  bool get hasSeenInboxTip => _prefs.getBool(_keySeenInboxTip) ?? false;
+  set hasSeenInboxTip(bool v) => _prefs.setBool(_keySeenInboxTip, v);
+
+  bool get hasSeenMyPostsTip => _prefs.getBool(_keySeenMyPostsTip) ?? false;
+  set hasSeenMyPostsTip(bool v) => _prefs.setBool(_keySeenMyPostsTip, v);
 }

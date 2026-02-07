@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/message_model.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/message_bubble.dart';
 import 'task_completion_screen.dart';
+import 'report_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.postId});
@@ -21,6 +23,31 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  String? _otherUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOtherUser();
+  }
+
+  Future<void> _loadOtherUser() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final doc =
+          await context.read<FirestoreService>().getPost(widget.postId);
+      final data = doc.data();
+      if (data == null) return;
+      final postOwner = data['userId'] as String?;
+      final acceptedBy = data['acceptedBy'] as String?;
+      if (mounted) {
+        setState(() {
+          _otherUserId = (postOwner == uid) ? acceptedBy : postOwner;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -43,6 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     try {
       await context.read<FirestoreService>().sendMessage(widget.postId, message);
+      context.read<AnalyticsService>().logMessageSent();
       _textController.clear();
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -57,6 +85,56 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(
             content: const Text('Failed to send message.'),
             action: SnackBarAction(label: 'Retry', onPressed: _send),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _blockUser() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || _otherUserId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Block this user?'),
+        content: const Text(
+          'Blocked users can\'t contact you and their posts '
+          'won\'t appear in your feed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await context.read<FirestoreService>().blockUser(uid, _otherUserId!);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User blocked.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to block user. Try again.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -81,6 +159,40 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
+          if (_otherUserId != null)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'report') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ReportScreen(
+                        reportedUserId: _otherUserId!,
+                      ),
+                    ),
+                  );
+                } else if (value == 'block') {
+                  _blockUser();
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'report',
+                  child: ListTile(
+                    leading: Icon(Icons.flag, color: Colors.orange),
+                    title: Text('Report user'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'block',
+                  child: ListTile(
+                    leading: Icon(Icons.block, color: Colors.red),
+                    title: Text('Block user'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: Column(

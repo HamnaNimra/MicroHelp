@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
+import 'services/analytics_service.dart';
 import 'services/preferences_service.dart';
+import 'services/storage_service.dart';
 import 'screens/splash_screen.dart';
 
 class MicroHelpApp extends StatelessWidget {
@@ -22,16 +24,24 @@ class MicroHelpApp extends StatelessWidget {
             previous ?? AuthService(notificationService),
         ),
         Provider(create: (_) => FirestoreService()),
+        Provider(create: (_) => StorageService()),
+        Provider(create: (_) => AnalyticsService()),
         Provider.value(value: preferencesService),
       ],
-      child: MaterialApp(
-        title: 'MicroHelp',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-          useMaterial3: true,
-        ),
-        home: const SplashScreen(),
+      child: Builder(
+        builder: (context) {
+          final analytics = context.read<AnalyticsService>();
+          return MaterialApp(
+            title: 'MicroHelp',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+              useMaterial3: true,
+            ),
+            navigatorObservers: [analytics.observer],
+            home: const SplashScreen(),
+          );
+        },
       ),
     );
   }

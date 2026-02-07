@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../models/message_model.dart';
+import '../models/report_model.dart';
 import '../constants/badges.dart';
 
 class FirestoreService {
@@ -27,8 +28,31 @@ class FirestoreService {
     return _posts.doc(postId).get();
   }
 
+  Future<void> updatePost(String postId, Map<String, dynamic> updates) async {
+    await _posts.doc(postId).update(updates);
+  }
+
+  Future<void> deletePost(String postId) async {
+    await _posts.doc(postId).delete();
+  }
+
+  /// Accept a post (set acceptedBy to current user). Fails if post is missing,
+  /// already accepted, or completed. Use a read-then-write to avoid races.
   Future<void> acceptPost(String postId, String userId) async {
-    await _posts.doc(postId).update({'acceptedBy': userId});
+    final ref = _posts.doc(postId);
+    final snap = await ref.get();
+    if (!snap.exists || snap.data() == null) {
+      throw AcceptPostException('Post no longer exists.');
+    }
+    final data = snap.data()!;
+    if (data['completed'] == true) {
+      throw AcceptPostException('This task is already completed.');
+    }
+    final existing = data['acceptedBy'] as String?;
+    if (existing != null) {
+      throw AcceptPostException('Someone else already accepted this post.');
+    }
+    await ref.update({'acceptedBy': userId});
   }
 
   /// Completes the post. If [currentUserId] is the helper (acceptedBy),
@@ -115,4 +139,39 @@ class FirestoreService {
     });
     return true;
   }
+
+  // --------------- Report & Block ---------------
+
+  /// Submit a report to the reports collection.
+  Future<void> createReport(ReportModel report) async {
+    await _firestore.collection('reports').add(report.toFirestore());
+  }
+
+  /// Block a user. Adds [blockedUserId] to the current user's blockedUsers array.
+  Future<void> blockUser(String currentUserId, String blockedUserId) async {
+    await _firestore.collection('users').doc(currentUserId).update({
+      'blockedUsers': FieldValue.arrayUnion([blockedUserId]),
+    });
+  }
+
+  /// Unblock a user.
+  Future<void> unblockUser(String currentUserId, String blockedUserId) async {
+    await _firestore.collection('users').doc(currentUserId).update({
+      'blockedUsers': FieldValue.arrayRemove([blockedUserId]),
+    });
+  }
+
+  /// Get the current user's blocked user IDs.
+  Future<List<String>> getBlockedUsers(String userId) async {
+    final doc = await _firestore.collection('users').doc(userId).get();
+    return List<String>.from(doc.data()?['blockedUsers'] as List? ?? []);
+  }
+}
+
+/// Thrown when acceptPost fails due to post state (already accepted, completed, or missing).
+class AcceptPostException implements Exception {
+  final String message;
+  AcceptPostException(this.message);
+  @override
+  String toString() => message;
 }

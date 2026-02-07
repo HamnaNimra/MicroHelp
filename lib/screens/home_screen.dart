@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'feed_screen.dart';
+import 'inbox_screen.dart';
 import 'post_help_screen.dart';
 import 'profile_screen.dart';
 
@@ -13,18 +14,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
 
-  static const _tabs = [
-    FeedScreen(),
-    PostHelpScreen(),
-    ProfileScreen(),
-  ];
+  void _goToPostTab() => setState(() => _index = 1);
+  void _goToFeedTab() => setState(() => _index = 0);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: _tabs,
+        children: [
+          FeedScreen(onNavigateToCreatePost: _goToPostTab),
+          PostHelpScreen(),
+          InboxScreen(
+            onNavigateToCreatePost: _goToPostTab,
+            onBrowseFeed: _goToFeedTab,
+          ),
+          ProfileScreen(onNavigateToCreatePost: _goToPostTab),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -39,6 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.add_circle_outline),
             selectedIcon: Icon(Icons.add_circle),
             label: 'Post',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.inbox_outlined),
+            selectedIcon: Icon(Icons.inbox),
+            label: 'Inbox',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

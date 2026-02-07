@@ -9,12 +9,15 @@ import '../services/preferences_service.dart';
 import '../utils/geo_utils.dart';
 import '../widgets/error_view.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/first_time_tip_banner.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/post_card.dart';
 import 'post_detail_screen.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+  const FeedScreen({super.key, this.onNavigateToCreatePost});
+
+  final VoidCallback? onNavigateToCreatePost;
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -25,6 +28,7 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _locationLoading = true;
   late bool _showGlobal;
   late double _localRadiusKm;
+  Set<String> _blockedUsers = {};
 
   @override
   void initState() {
@@ -33,6 +37,17 @@ class _FeedScreenState extends State<FeedScreen> {
     _showGlobal = prefs.showGlobalPosts;
     _localRadiusKm = prefs.localRadiusKm;
     _loadUserLocation();
+    _loadBlockedUsers();
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final blocked =
+          await context.read<FirestoreService>().getBlockedUsers(uid);
+      if (mounted) setState(() => _blockedUsers = blocked.toSet());
+    } catch (_) {}
   }
 
   Future<void> _loadUserLocation() async {
@@ -77,6 +92,9 @@ class _FeedScreenState extends State<FeedScreen> {
     final results = <_PostWithDistance>[];
 
     for (final post in posts) {
+      // Skip posts from blocked users.
+      if (_blockedUsers.contains(post.userId)) continue;
+
       if (post.global) {
         // Global posts: show if toggle is on.
         if (_showGlobal) {
@@ -207,33 +225,62 @@ class _FeedScreenState extends State<FeedScreen> {
                 final allPosts =
                     docs.map((d) => PostModel.fromFirestore(d)).toList();
                 final filtered = _filterAndSort(allPosts);
+                final prefs = context.read<PreferencesService>();
+                final showFeedTip = !prefs.hasSeenFeedTip;
 
+                Widget content;
                 if (filtered.isEmpty) {
-                  return const EmptyStateView(
+                  content = EmptyStateView(
                     icon: Icons.post_add,
                     title: 'No nearby posts',
                     subtitle:
                         'No active posts match your filters. Try adjusting your radius or enabling global posts.',
+                    primaryActionLabel: 'Adjust filters',
+                    onPrimaryAction: _openFilterSheet,
+                    secondaryActionLabel: widget.onNavigateToCreatePost != null
+                        ? 'Create a post'
+                        : null,
+                    onSecondaryAction: widget.onNavigateToCreatePost,
+                  );
+                } else {
+                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                  content = ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) {
+                      final item = filtered[i];
+                      return PostCard(
+                        post: item.post,
+                        distanceKm: item.distance,
+                        isOwn: item.post.userId == uid,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                PostDetailScreen(postId: item.post.id),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, i) {
-                    final item = filtered[i];
-                    return PostCard(
-                      post: item.post,
-                      distanceKm: item.distance,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              PostDetailScreen(postId: item.post.id),
-                        ),
+                if (showFeedTip) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FirstTimeTipBanner(
+                        message:
+                            'Tap a post to view details and accept. Your own posts show as "Your post" on the feed.',
+                        onDismiss: () {
+                          prefs.hasSeenFeedTip = true;
+                          if (mounted) setState(() {});
+                        },
                       ),
-                    );
-                  },
-                );
+                      Expanded(child: content),
+                    ],
+                  );
+                }
+                return content;
               },
             ),
     );

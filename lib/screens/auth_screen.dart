@@ -1,31 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/analytics_service.dart';
+import 'complete_profile_screen.dart';
 import 'home_screen.dart';
+import 'sign_up_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.initialSignUp = true});
-
-  final bool initialSignUp;
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  late bool _isSignUp;
   bool _loading = false;
   String? _error;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _isSignUp = widget.initialSignUp;
-  }
 
   @override
   void dispose() {
@@ -37,9 +32,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isSignUp ? 'Sign Up' : 'Sign In'),
-      ),
+      appBar: AppBar(title: const Text('Sign In')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -51,9 +44,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 if (_error != null) ...[
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(
+                    child: SelectableText(
                       _error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error),
                     ),
                   ),
                 ],
@@ -81,16 +75,23 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) =>
                       (v == null || v.isEmpty) ? 'Enter your password' : null,
                 ),
-                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _loading ? null : _showForgotPasswordDialog,
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 FilledButton(
-                  onPressed: _loading ? null : _submitEmailPassword,
+                  onPressed: _loading ? null : _submitSignIn,
                   child: _loading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                      : const Text('Sign In'),
                 ),
                 const SizedBox(height: 16),
                 const Row(
@@ -121,13 +122,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () {
-                    setState(() => _isSignUp = !_isSignUp);
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => const SignUpScreen(),
+                      ),
+                    );
                   },
-                  child: Text(
-                    _isSignUp
-                        ? 'Already have an account? Sign In'
-                        : "Don't have an account? Sign Up",
-                  ),
+                  child: const Text("Don't have an account? Sign Up"),
                 ),
               ],
             ),
@@ -164,24 +165,145 @@ class _AuthScreenState extends State<AuthScreen> {
     return 'Something went wrong. Please try again.';
   }
 
-  Future<void> _submitEmailPassword() async {
+  void _navigateAfterAuth(UserModel? user, String uid, String? displayName) {
+    if (user != null && !context.read<AuthService>().isProfileComplete(user)) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => CompleteProfileScreen(
+            uid: uid,
+            prefillName: displayName,
+          ),
+        ),
+        (r) => false,
+      );
+    } else {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (r) => false,
+      );
+    }
+  }
+
+  void _showForgotPasswordDialog() {
+    final resetEmailCtrl = TextEditingController(text: _emailController.text);
+    bool sending = false;
+    String? message;
+    bool success = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Reset password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: resetEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                enabled: !sending && !success,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  errorText: message != null && !success ? message : null,
+                ),
+              ),
+              if (success && message != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  message!,
+                  style: TextStyle(color: Colors.green[700]),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(success ? 'Done' : 'Cancel'),
+            ),
+            if (!success)
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = resetEmailCtrl.text.trim();
+                        if (email.isEmpty) {
+                          setDialogState(() => message = 'Enter your email');
+                          return;
+                        }
+                        setDialogState(() {
+                          sending = true;
+                          message = null;
+                        });
+                        try {
+                          await context
+                              .read<AuthService>()
+                              .sendPasswordResetEmail(email);
+                          setDialogState(() {
+                            sending = false;
+                            success = true;
+                            message =
+                                'Password reset email sent! Check your inbox.';
+                          });
+                        } on FirebaseAuthException catch (e) {
+                          setDialogState(() {
+                            sending = false;
+                            switch (e.code) {
+                              case 'user-not-found':
+                                message =
+                                    'No account found with that email.';
+                              case 'invalid-email':
+                                message = 'That email address is not valid.';
+                              case 'too-many-requests':
+                                message =
+                                    'Too many attempts. Try again later.';
+                              default:
+                                message =
+                                    e.message ?? 'Failed to send reset email.';
+                            }
+                          });
+                        } catch (_) {
+                          setDialogState(() {
+                            sending = false;
+                            message = 'Something went wrong. Please try again.';
+                          });
+                        }
+                      },
+                child: sending
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Send reset link'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitSignIn() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
       final auth = context.read<AuthService>();
-      final cred = _isSignUp
-          ? await auth.signUpWithEmail(
-              _emailController.text.trim(), _passwordController.text)
-          : await auth.signInWithEmail(
-              _emailController.text.trim(), _passwordController.text);
+      final cred = await auth.signInWithEmail(
+          _emailController.text.trim(), _passwordController.text);
       if (cred?.user != null) {
-        await auth.getOrCreateUser(cred!.user!);
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (r) => false,
-          );
-        }
+        final user = await auth.getOrCreateUser(cred!.user!);
+        if (!mounted) return;
+        final analytics = context.read<AnalyticsService>();
+        analytics.logLogin(method: 'email');
+        analytics.setUserProperties(userId: cred.user!.uid);
+        _navigateAfterAuth(user, cred.user!.uid, cred.user!.displayName);
       }
     } catch (e) {
       if (mounted) setState(() => _error = _friendlyAuthError(e));
@@ -190,19 +312,18 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
+  Future<void> _socialSignIn(Future<UserCredential?> Function() signIn, String method) async {
     setState(() { _loading = true; _error = null; });
     try {
       final auth = context.read<AuthService>();
-      final cred = await auth.signInWithGoogle();
+      final cred = await signIn();
       if (cred?.user != null) {
-        await auth.getOrCreateUser(cred!.user!);
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (r) => false,
-          );
-        }
+        final user = await auth.getOrCreateUser(cred!.user!);
+        if (!mounted) return;
+        final analytics = context.read<AnalyticsService>();
+        analytics.logLogin(method: method);
+        analytics.setUserProperties(userId: cred.user!.uid);
+        _navigateAfterAuth(user, cred.user!.uid, cred.user!.displayName);
       }
     } catch (e) {
       if (mounted) setState(() => _error = _friendlyAuthError(e));
@@ -211,24 +332,9 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _signInWithApple() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final auth = context.read<AuthService>();
-      final cred = await auth.signInWithApple();
-      if (cred?.user != null) {
-        await auth.getOrCreateUser(cred!.user!);
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (r) => false,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) setState(() => _error = _friendlyAuthError(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+  Future<void> _signInWithGoogle() =>
+      _socialSignIn(context.read<AuthService>().signInWithGoogle, 'google');
+
+  Future<void> _signInWithApple() =>
+      _socialSignIn(context.read<AuthService>().signInWithApple, 'apple');
 }

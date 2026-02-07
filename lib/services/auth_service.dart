@@ -16,7 +16,9 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  bool get canSignInWithGoogle => false;  // Google Sign-In not available (requires mobile/web platform)
+  bool get canSignInWithGoogle => true;
+
+  bool get canSignInWithApple => true;
 
   Future<UserCredential?> signInWithEmail(String email, String password) async {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
@@ -28,45 +30,75 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithGoogle() async {
-    throw UnsupportedError('Google Sign-In is not supported on this platform');
+    final googleProvider = GoogleAuthProvider();
+    if (kIsWeb) {
+      return _auth.signInWithPopup(googleProvider);
+    }
+    return _auth.signInWithProvider(googleProvider);
   }
 
   Future<UserCredential?> signInWithApple() async {
     final appleProvider = AppleAuthProvider();
+    if (kIsWeb) {
+      return _auth.signInWithPopup(appleProvider);
+    }
     return _auth.signInWithProvider(appleProvider);
   }
 
-  bool get canSignInWithApple =>
-      !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS);
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
 
   Future<void> signOut() async {
-    // Delete FCM token before signing out
-    await _notificationService.deleteToken();
+    try {
+      await _notificationService.deleteToken();
+    } catch (_) {}
     await _auth.signOut();
   }
 
-  Future<UserModel?> getOrCreateUser(User firebaseUser) async {
+  Future<UserModel?> getOrCreateUser(
+    User firebaseUser, {
+    String? displayName,
+    DateTime? birthday,
+    String? gender,
+    String? neighborhood,
+    String? bio,
+  }) async {
     final ref = _firestore.collection('users').doc(firebaseUser.uid);
     final doc = await ref.get();
 
     if (doc.exists) {
-      // Existing user - save FCM token
-      await _notificationService.saveToken(firebaseUser.uid);
+      // Save FCM token (non-blocking — may fail on web)
+      _notificationService.saveToken(firebaseUser.uid).catchError((_) {});
       return UserModel.fromFirestore(doc);
     }
 
     // New user - create document
     final now = DateTime.now();
+    final name = displayName ??
+        firebaseUser.displayName ??
+        firebaseUser.email ??
+        'User';
     final userModel = UserModel(
       id: firebaseUser.uid,
-      name: firebaseUser.displayName ?? firebaseUser.email ?? 'User',
+      name: name,
       profilePic: firebaseUser.photoURL,
       createdAt: now,
+      birthday: birthday,
+      gender: gender,
+      ageRange: birthday != null ? _computeAgeRange(birthday) : null,
+      neighborhood: neighborhood,
+      bio: bio,
     );
     await ref.set(userModel.toFirestore());
 
-    // Save FCM token for new user
-    await _notificationService.saveToken(firebaseUser.uid);
+    // Update Firebase Auth display name if provided
+    if (displayName != null && firebaseUser.displayName != displayName) {
+      await firebaseUser.updateDisplayName(displayName);
+    }
+
+    // Save FCM token (non-blocking — may fail on web)
+    _notificationService.saveToken(firebaseUser.uid).catchError((_) {});
 
     // Award Founding Neighbor badge to all beta users
     final badge = availableBadges[0]; // founding_neighbor
@@ -78,5 +110,124 @@ class AuthService {
     });
 
     return userModel;
+  }
+
+  /// Returns true if this user doc has the required community fields filled in.
+  bool isProfileComplete(UserModel user) {
+    return user.birthday != null && user.gender != null;
+  }
+
+  /// Updates an existing user's profile fields in Firestore.
+  Future<void> updateUserProfile(
+    String uid, {
+    required String name,
+    required DateTime birthday,
+    required String gender,
+    String? neighborhood,
+    String? bio,
+  }) async {
+    final updates = <String, dynamic>{
+      'name': name,
+      'birthday': Timestamp.fromDate(birthday),
+      'gender': gender,
+      'ageRange': _computeAgeRange(birthday),
+    };
+    if (neighborhood != null) updates['neighborhood'] = neighborhood;
+    if (bio != null) updates['bio'] = bio;
+    await _firestore.collection('users').doc(uid).update(updates);
+  }
+
+  /// Returns the primary sign-in provider for the current user.
+  /// Returns 'google.com', 'apple.com', 'password', or null.
+  String? getSignInProvider() {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    for (final info in user.providerData) {
+      if (info.providerId == 'google.com') return 'google.com';
+      if (info.providerId == 'apple.com') return 'apple.com';
+    }
+    return 'password';
+  }
+
+  /// Re-authenticates the user with their password, deletes Firestore data,
+  /// then deletes the Firebase Auth account.
+  Future<void> deleteAccount(String password) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+
+    // Re-authenticate to prove identity
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+
+    await _deleteUserData(user);
+  }
+
+  /// Re-authenticates via Google or Apple provider, then deletes account.
+  Future<void> deleteAccountWithProvider() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+
+    final provider = getSignInProvider();
+    if (provider == 'google.com') {
+      final googleProvider = GoogleAuthProvider();
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(googleProvider);
+      } else {
+        await user.reauthenticateWithProvider(googleProvider);
+      }
+    } else if (provider == 'apple.com') {
+      final appleProvider = AppleAuthProvider();
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(appleProvider);
+      } else {
+        await user.reauthenticateWithProvider(appleProvider);
+      }
+    } else {
+      throw StateError('Use deleteAccount(password) for email/password users');
+    }
+
+    await _deleteUserData(user);
+  }
+
+  Future<void> _deleteUserData(User user) async {
+    final uid = user.uid;
+
+    // Delete FCM token
+    try {
+      await _notificationService.deleteToken();
+    } catch (_) {}
+
+    // Delete badges sub-collection
+    final badgesSnap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('badges')
+        .get();
+    for (final doc in badgesSnap.docs) {
+      await doc.reference.delete();
+    }
+
+    // Delete user document
+    await _firestore.collection('users').doc(uid).delete();
+
+    // Delete Firebase Auth account
+    await user.delete();
+  }
+
+  String _computeAgeRange(DateTime birthday) {
+    final now = DateTime.now();
+    int age = now.year - birthday.year;
+    if (now.month < birthday.month ||
+        (now.month == birthday.month && now.day < birthday.day)) {
+      age--;
+    }
+    if (age <= 25) return '18-25';
+    if (age <= 35) return '26-35';
+    if (age <= 45) return '36-45';
+    if (age <= 60) return '46-60';
+    return '60+';
   }
 }

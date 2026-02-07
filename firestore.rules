@@ -16,10 +16,13 @@ service cloud.firestore {
     match /posts/{postId} {
       allow create: if request.auth != null;
       allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Owner can update; anyone can set acceptedBy to themselves when it's currently unset (accept); helper can update (e.g. complete)
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.userId
-        || (resource.data.acceptedBy == null && request.resource.data.acceptedBy == request.auth.uid)
-        || request.auth.uid == resource.data.acceptedBy
+        || (resource.data.get('acceptedBy', null) == null
+            && request.resource.data.get('acceptedBy', null) == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedBy']))
+        || request.auth.uid == resource.data.get('acceptedBy', null)
       );
       allow read: if request.auth != null;
     }
@@ -41,6 +44,17 @@ service cloud.firestore {
       allow read: if request.auth != null
         && resource.data.userId == request.auth.uid;
       // Only admins can update status (done manually via Firebase Console for MVP)
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      // Any authenticated user can create a report with their own ID as reporter
+      allow create: if request.auth != null
+        && request.resource.data.reporterId == request.auth.uid;
+      // Users can read their own reports
+      allow read: if request.auth != null
+        && resource.data.reporterId == request.auth.uid;
+      // Only admins can update/delete reports (via Firebase Console for MVP)
       allow update, delete: if false;
     }
   }
