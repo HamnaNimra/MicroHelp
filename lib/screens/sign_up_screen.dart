@@ -1,6 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../constants/legal_text.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import '../widgets/password_strength_meter.dart';
@@ -300,6 +302,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             .primary,
                                         decoration: TextDecoration.underline,
                                       ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () => _showLegalDialog(
+                                              'Terms of Service',
+                                              termsOfService,
+                                            ),
                                     ),
                                     const TextSpan(text: ' and '),
                                     TextSpan(
@@ -310,6 +317,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             .primary,
                                         decoration: TextDecoration.underline,
                                       ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () => _showLegalDialog(
+                                              'Privacy Policy',
+                                              privacyPolicy,
+                                            ),
                                     ),
                                   ],
                                 ),
@@ -408,6 +420,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showLegalDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Text(content),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
