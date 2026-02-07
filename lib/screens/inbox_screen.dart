@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../models/post_model.dart';
+import '../services/preferences_service.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/error_view.dart';
+import '../widgets/first_time_tip_banner.dart';
 import '../widgets/loading_view.dart';
 import 'chat_screen.dart';
 
 /// Inbox = conversations (chats). Posts where you're in an active conversation
 /// (you're helping, or someone accepted your post).
-class InboxScreen extends StatelessWidget {
-  const InboxScreen({super.key});
+class InboxScreen extends StatefulWidget {
+  const InboxScreen({super.key, this.onNavigateToCreatePost, this.onBrowseFeed});
 
+  final VoidCallback? onNavigateToCreatePost;
+  final VoidCallback? onBrowseFeed;
+
+  @override
+  State<InboxScreen> createState() => _InboxScreenState();
+}
+
+class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -20,20 +31,40 @@ class InboxScreen extends StatelessWidget {
         body: Center(child: Text('Not signed in')),
       );
     }
+    final prefs = context.read<PreferencesService>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inbox'),
       ),
-      body: _ChatsList(uid: uid),
+      body: _ChatsList(
+        uid: uid,
+        showTip: !prefs.hasSeenInboxTip,
+        onDismissTip: () {
+          prefs.hasSeenInboxTip = true;
+          if (mounted) setState(() {});
+        },
+        onNavigateToCreatePost: widget.onNavigateToCreatePost,
+        onBrowseFeed: widget.onBrowseFeed,
+      ),
     );
   }
 }
 
 /// Merges "posts I'm helping" and "my posts that have a helper" into one chats list.
 class _ChatsList extends StatelessWidget {
-  const _ChatsList({required this.uid});
+  const _ChatsList({
+    required this.uid,
+    required this.showTip,
+    required this.onDismissTip,
+    this.onNavigateToCreatePost,
+    this.onBrowseFeed,
+  });
   final String uid;
+  final bool showTip;
+  final VoidCallback onDismissTip;
+  final VoidCallback? onNavigateToCreatePost;
+  final VoidCallback? onBrowseFeed;
 
   @override
   Widget build(BuildContext context) {
@@ -77,27 +108,49 @@ class _ChatsList extends StatelessWidget {
               }
             }
 
+            Widget content;
             if (chatItems.isEmpty) {
-              return const EmptyStateView(
+              content = EmptyStateView(
                 icon: Icons.chat_bubble_outline,
                 title: 'No conversations yet',
                 subtitle:
                     'When someone accepts your post or you accept someone else\'s, your chats will appear here.',
+                primaryActionLabel: onNavigateToCreatePost != null
+                    ? 'Create a post'
+                    : null,
+                onPrimaryAction: onNavigateToCreatePost,
+                secondaryActionLabel: onBrowseFeed != null ? 'Browse feed' : null,
+                onSecondaryAction: onBrowseFeed,
+              );
+            } else {
+              content = ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: chatItems.length,
+                itemBuilder: (context, i) {
+                  final item = chatItems[i];
+                  return _ChatTile(
+                    post: item.post,
+                    postId: item.postId,
+                    isHelping: item.isHelping,
+                  );
+                },
               );
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: chatItems.length,
-              itemBuilder: (context, i) {
-                final item = chatItems[i];
-                return _ChatTile(
-                  post: item.post,
-                  postId: item.postId,
-                  isHelping: item.isHelping,
-                );
-              },
-            );
+            if (showTip) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FirstTimeTipBanner(
+                    message:
+                        'When someone accepts your post or you accept theirs, conversations appear here.',
+                    onDismiss: onDismissTip,
+                  ),
+                  Expanded(child: content),
+                ],
+              );
+            }
+            return content;
           },
         );
       },
