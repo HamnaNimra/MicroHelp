@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
+import 'complete_profile_screen.dart';
 import 'home_screen.dart';
 import 'sign_up_screen.dart';
 
