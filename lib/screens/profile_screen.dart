@@ -113,6 +113,11 @@ class ProfileScreen extends StatelessWidget {
                         avatar: const Icon(Icons.cake, size: 18),
                         label: Text(user.ageRange!),
                       ),
+                    if (user.neighborhood != null)
+                      Chip(
+                        avatar: const Icon(Icons.location_on, size: 18),
+                        label: Text(user.neighborhood!),
+                      ),
                     if (user.accountAge != null)
                       Chip(
                         avatar: const Icon(Icons.schedule, size: 18),
@@ -120,6 +125,14 @@ class ProfileScreen extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (user.bio != null && user.bio!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    user.bio!,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).push(
