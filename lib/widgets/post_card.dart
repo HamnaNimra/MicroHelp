@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/post_model.dart';
+import '../theme/app_theme.dart';
 
 class PostCard extends StatelessWidget {
   const PostCard({
@@ -17,70 +18,176 @@ class PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isRequest = post.type == PostType.request;
+    final accentColor =
+        isRequest ? AppColors.request(context) : AppColors.offer(context);
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        title: Row(
-          children: [
-            Text(
-              post.type == PostType.request ? 'Request' : 'Offer',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color:
-                    post.type == PostType.request ? Colors.orange : Colors.green,
-              ),
-            ),
-            if (isOwn) ...[
-              const SizedBox(width: 8),
-              Icon(Icons.person,
-                  size: 16, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 2),
-              Text(
-                'Your post',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-              ),
-            ],
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              post.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            // Always show poster's gender and age range
-            if (post.posterGender != null || post.posterAgeRange != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  [
-                    if (post.posterGender != null) post.posterGender!,
-                    if (post.posterAgeRange != null) post.posterAgeRange!,
-                  ].join(' · '),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Left accent strip
+              Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                  ),
                 ),
               ),
-            if (distanceKm != null)
-              Text(
-                distanceKm! < 1
-                    ? '${(distanceKm! * 1000).toStringAsFixed(0)} m away'
-                    : '${distanceKm!.toStringAsFixed(1)} km away',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+              // Content
+              Expanded(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top row: type pill + own badge + time estimate
+                      Row(
+                        children: [
+                          _TypePill(isRequest: isRequest, color: accentColor),
+                          if (isOwn) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: cs.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.person,
+                                      size: 12, color: cs.primary),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Yours',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
+                          if (post.estimatedMinutes != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.schedule,
+                                    size: 14, color: cs.onSurfaceVariant),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '~${post.estimatedMinutes} min',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Description
+                      Text(
+                        post.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      // Bottom row: poster info + distance
+                      Row(
+                        children: [
+                          if (post.posterGender != null ||
+                              post.posterAgeRange != null)
+                            Expanded(
+                              child: Text(
+                                [
+                                  if (post.posterGender != null)
+                                    post.posterGender!,
+                                  if (post.posterAgeRange != null)
+                                    post.posterAgeRange!,
+                                ].join(' · '),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                              ),
+                            ),
+                          if (distanceKm != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.near_me,
+                                    size: 14, color: cs.primary),
+                                const SizedBox(width: 3),
+                                Text(
+                                  distanceKm! < 1
+                                      ? '${(distanceKm! * 1000).toStringAsFixed(0)} m'
+                                      : '${distanceKm!.toStringAsFixed(1)} km',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: cs.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-          ],
+            ],
+          ),
         ),
-        trailing: post.estimatedMinutes != null
-            ? Text('~${post.estimatedMinutes} min')
-            : null,
-        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _TypePill extends StatelessWidget {
+  const _TypePill({required this.isRequest, required this.color});
+
+  final bool isRequest;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(26),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(77)),
+      ),
+      child: Text(
+        isRequest ? 'Request' : 'Offer',
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+        ),
       ),
     );
   }
