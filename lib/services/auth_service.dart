@@ -40,33 +40,43 @@ class AuthService {
       !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS);
 
   Future<void> signOut() async {
-    // Delete FCM token before signing out
-    await _notificationService.deleteToken();
+    try {
+      await _notificationService.deleteToken();
+    } catch (_) {}
     await _auth.signOut();
   }
 
-  Future<UserModel?> getOrCreateUser(User firebaseUser) async {
+  Future<UserModel?> getOrCreateUser(User firebaseUser, {String? displayName}) async {
     final ref = _firestore.collection('users').doc(firebaseUser.uid);
     final doc = await ref.get();
 
     if (doc.exists) {
-      // Existing user - save FCM token
-      await _notificationService.saveToken(firebaseUser.uid);
+      // Save FCM token (non-blocking — may fail on web)
+      _notificationService.saveToken(firebaseUser.uid).catchError((_) {});
       return UserModel.fromFirestore(doc);
     }
 
     // New user - create document
     final now = DateTime.now();
+    final name = displayName ??
+        firebaseUser.displayName ??
+        firebaseUser.email ??
+        'User';
     final userModel = UserModel(
       id: firebaseUser.uid,
-      name: firebaseUser.displayName ?? firebaseUser.email ?? 'User',
+      name: name,
       profilePic: firebaseUser.photoURL,
       createdAt: now,
     );
     await ref.set(userModel.toFirestore());
 
-    // Save FCM token for new user
-    await _notificationService.saveToken(firebaseUser.uid);
+    // Update Firebase Auth display name if provided
+    if (displayName != null && firebaseUser.displayName != displayName) {
+      await firebaseUser.updateDisplayName(displayName);
+    }
+
+    // Save FCM token (non-blocking — may fail on web)
+    _notificationService.saveToken(firebaseUser.uid).catchError((_) {});
 
     // Award Founding Neighbor badge to all beta users
     final badge = availableBadges[0]; // founding_neighbor
