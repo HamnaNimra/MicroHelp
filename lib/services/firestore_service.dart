@@ -116,4 +116,31 @@ class FirestoreService {
     });
     return true;
   }
+
+  // --------------- Report & Block ---------------
+
+  /// Submit a report to the reports collection.
+  Future<void> createReport(ReportModel report) async {
+    await _firestore.collection('reports').add(report.toFirestore());
+  }
+
+  /// Block a user. Adds [blockedUserId] to the current user's blockedUsers array.
+  Future<void> blockUser(String currentUserId, String blockedUserId) async {
+    await _firestore.collection('users').doc(currentUserId).update({
+      'blockedUsers': FieldValue.arrayUnion([blockedUserId]),
+    });
+  }
+
+  /// Unblock a user.
+  Future<void> unblockUser(String currentUserId, String blockedUserId) async {
+    await _firestore.collection('users').doc(currentUserId).update({
+      'blockedUsers': FieldValue.arrayRemove([blockedUserId]),
+    });
+  }
+
+  /// Get the current user's blocked user IDs.
+  Future<List<String>> getBlockedUsers(String userId) async {
+    final doc = await _firestore.collection('users').doc(userId).get();
+    return List<String>.from(doc.data()?['blockedUsers'] as List? ?? []);
+  }
 }
