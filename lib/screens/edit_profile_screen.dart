@@ -45,15 +45,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _saving = true);
 
     try {
-      final effectiveGender =
-          _gender == 'Other' ? _genderOtherCtrl.text.trim() : _gender;
-
       final updates = <String, dynamic>{
         'name': _nameController.text.trim(),
         'lastActive': FieldValue.serverTimestamp(),
       };
-      if (effectiveGender != null) updates['gender'] = effectiveGender;
-      if (_ageRange != null) updates['ageRange'] = _ageRange;
       if (_neighborhoodCtrl.text.trim().isNotEmpty) {
         updates['neighborhood'] = _neighborhoodCtrl.text.trim();
       }
@@ -225,45 +220,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _gender,
+              TextFormField(
+                initialValue: widget.user.gender ?? 'Not set',
+                readOnly: true,
+                enabled: false,
                 decoration: const InputDecoration(
                   labelText: 'Gender',
                   border: OutlineInputBorder(),
+                  helperText: 'Set at sign-up and cannot be changed',
                 ),
-                items: _genderOptions
-                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                    .toList(),
-                onChanged: (v) => setState(() => _gender = v),
               ),
-              if (_gender == 'Other') ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _genderOtherCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Please specify',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (_gender == 'Other' &&
-                        (v == null || v.trim().isEmpty)) {
-                      return 'Please specify your gender';
-                    }
-                    return null;
-                  },
-                ),
-              ],
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _ageRange,
+              TextFormField(
+                initialValue: widget.user.ageRange ?? 'Not set',
+                readOnly: true,
+                enabled: false,
                 decoration: const InputDecoration(
                   labelText: 'Age range',
                   border: OutlineInputBorder(),
+                  helperText: 'Set at sign-up and cannot be changed',
                 ),
-                items: _ageRangeOptions
-                    .map((a) => DropdownMenuItem(value: a, child: Text(a)))
-                    .toList(),
-                onChanged: (v) => setState(() => _ageRange = v),
               ),
               const SizedBox(height: 16),
               TextFormField(
