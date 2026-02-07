@@ -278,7 +278,38 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       ),
                     );
                   }
-                } catch (_) {
+                } on AcceptPostException catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.message),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                } on FirebaseException catch (e) {
+                  assert(() {
+                    // ignore: avoid_print
+                    print('Accept post FirebaseException: ${e.code} ${e.message}');
+                    return true;
+                  }());
+                  if (context.mounted) {
+                    final msg = e.code == 'permission-denied'
+                        ? 'You don\'t have permission to accept this post.'
+                        : 'Failed to accept. Check your connection and try again.';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(msg),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e, st) {
+                  assert(() {
+                    // ignore: avoid_print
+                    print('Accept post error: $e\n$st');
+                    return true;
+                  }());
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
