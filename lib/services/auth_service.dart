@@ -16,7 +16,9 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  bool get canSignInWithGoogle => false;  // Google Sign-In not available (requires mobile/web platform)
+  bool get canSignInWithGoogle => true;
+
+  bool get canSignInWithApple => true;
 
   Future<UserCredential?> signInWithEmail(String email, String password) async {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
@@ -28,16 +30,20 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithGoogle() async {
-    throw UnsupportedError('Google Sign-In is not supported on this platform');
+    final googleProvider = GoogleAuthProvider();
+    if (kIsWeb) {
+      return _auth.signInWithPopup(googleProvider);
+    }
+    return _auth.signInWithProvider(googleProvider);
   }
 
   Future<UserCredential?> signInWithApple() async {
     final appleProvider = AppleAuthProvider();
+    if (kIsWeb) {
+      return _auth.signInWithPopup(appleProvider);
+    }
     return _auth.signInWithProvider(appleProvider);
   }
-
-  bool get canSignInWithApple =>
-      !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS);
 
   Future<void> signOut() async {
     try {
