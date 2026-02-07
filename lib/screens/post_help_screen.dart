@@ -7,6 +7,7 @@ import '../models/post_model.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
 import '../services/notification_service.dart';
+import '../widgets/location_picker_map.dart';
 
 class PostHelpScreen extends StatefulWidget {
   const PostHelpScreen({super.key});
@@ -26,48 +27,129 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   DateTime _expiresAt = DateTime.now().add(const Duration(hours: 24));
   bool _submitting = false;
 
+  // Location state
+  GeoPoint? _gpsLocation; // Actual device GPS
+  GeoPoint? _selectedLocation; // User-picked pin on map
+  bool _loadingLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initLocation();
+  }
+
   @override
   void dispose() {
     _descController.dispose();
     super.dispose();
   }
 
-  Future<GeoPoint?> _getLocation() async {
-    var permission = await Geolocator.checkPermission();
+  Future<void> _initLocation() async {
+    setState(() => _loadingLocation = true);
+    try {
+      var permission = await Geolocator.checkPermission();
 
-    if (permission == LocationPermission.denied) {
-      // Show rationale before the OS permission dialog
-      if (!mounted) return null;
-      final shouldRequest = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.location_on, size: 40),
-          title: const Text('Share your location'),
-          content: const Text(
-            'We need your location to show your post to nearby neighbors. '
-            'Only your approximate area is shared — never your exact address.',
+      if (permission == LocationPermission.denied) {
+        if (!mounted) return;
+        final shouldRequest = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.location_on, size: 40),
+            title: const Text('Share your location'),
+            content: const Text(
+              'We need your location to show your post to nearby neighbors. '
+              'Only your approximate area is shared — never your exact address.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Not now'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Allow location'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Not now'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Allow location'),
-            ),
-          ],
-        ),
-      );
+        );
+        if (shouldRequest != true) return;
+        permission = await Geolocator.requestPermission();
+      }
 
-      if (shouldRequest != true) return null;
-      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.location_off, size: 40),
+            title: const Text('Location access needed'),
+            content: const Text(
+              'Location access was permanently denied. '
+              'Please enable it in your device Settings to post locally.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Geolocator.openAppSettings();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.location_off, size: 40),
+            title: const Text('Location services off'),
+            content: const Text(
+              'Please turn on location services to post locally.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Geolocator.openLocationSettings();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition();
+      final geoPoint = GeoPoint(pos.latitude, pos.longitude);
+      if (mounted) {
+        setState(() {
+          _gpsLocation = geoPoint;
+          _selectedLocation = geoPoint;
+        });
+      }
+    } catch (_) {
+      // Location failed silently — user can still post globally
+    } finally {
+      if (mounted) setState(() => _loadingLocation = false);
     }
+  }
 
-    if (permission == LocationPermission.deniedForever) return null;
-    if (!await Geolocator.isLocationServiceEnabled()) return null;
-    final pos = await Geolocator.getCurrentPosition();
-    return GeoPoint(pos.latitude, pos.longitude);
+  void _onLocationChanged(GeoPoint newLocation) {
+    setState(() => _selectedLocation = newLocation);
   }
 
   Future<void> _submit() async {
@@ -81,15 +163,14 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
     try {
       GeoPoint? location;
       if (!_global) {
-        location = await _getLocation();
+        location = _selectedLocation;
         if (location == null && mounted) {
-          // Offer to post globally instead
           final postGlobal = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
               title: const Text('Location unavailable'),
               content: const Text(
-                'We need your location to show your post to nearby neighbors. '
+                'We could not get your location. '
                 'Would you like to post globally instead?',
               ),
               actions: [
@@ -108,7 +189,6 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
             setState(() => _submitting = false);
             return;
           }
-          // Switch to global mode
           _global = true;
         }
       }
@@ -126,34 +206,36 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       );
 
       await context.read<FirestoreService>().createPost(post);
+      if (!mounted) return;
       context.read<AnalyticsService>().logPostCreated(
         type: _type.name,
         isGlobal: _global,
         radius: _radiusKm,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _type == PostType.request
-                  ? 'Request published! Nearby neighbors will see it.'
-                  : 'Offer published! Neighbors who need help will see it.',
-            ),
-            backgroundColor: Colors.green,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _type == PostType.request
+                ? 'Request published! Nearby neighbors will see it.'
+                : 'Offer published! Neighbors who need help will see it.',
           ),
-        );
-        _descController.clear();
-        setState(() => _global = false);
+          backgroundColor: Colors.green,
+        ),
+      );
+      _descController.clear();
+      setState(() {
+        _global = false;
+        _selectedLocation = _gpsLocation;
+      });
 
-        // Contextually request notification permission after first post
-        if (mounted) {
-          final notif = context.read<NotificationService>();
-          final granted =
-              await notif.requestPermissionWithRationale(context);
-          if (granted && mounted) {
-            final uid = FirebaseAuth.instance.currentUser?.uid;
-            if (uid != null) await notif.saveToken(uid);
-          }
+      // Contextually request notification permission after first post
+      if (mounted) {
+        final notif = context.read<NotificationService>();
+        final granted =
+            await notif.requestPermissionWithRationale(context);
+        if (granted && mounted) {
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          if (uid != null) await notif.saveToken(uid);
         }
       }
     } catch (_) {
@@ -243,6 +325,27 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
                   label: '${_radiusKm.toStringAsFixed(0)} km',
                   onChanged: (v) => setState(() => _radiusKm = v),
                 ),
+                const SizedBox(height: 8),
+                // Map section
+                if (_loadingLocation)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_selectedLocation != null)
+                  LocationPickerMap(
+                    initialLocation: _selectedLocation!,
+                    radiusKm: _radiusKm,
+                    onLocationChanged: _onLocationChanged,
+                    actualGpsLocation: _gpsLocation,
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: _initLocation,
+                    icon: const Icon(Icons.map),
+                    label: const Text('Enable location'),
+                  ),
+                const SizedBox(height: 8),
               ],
               SwitchListTile(
                 title: const Text('Post anonymously'),
