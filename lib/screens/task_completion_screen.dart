@@ -13,6 +13,32 @@ class TaskCompletionScreen extends StatelessWidget {
 
   final String postId;
 
+  static Future<void> _showBadgeEarnedDialog(
+    BuildContext context,
+    List<BadgeDefinition> badges,
+  ) {
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Badge earned!'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: badges.map((b) => ListTile(
+            leading: Icon(b.icon, color: Colors.amber, size: 32),
+            title: Text(b.name),
+            subtitle: Text(b.description),
+          )).toList(),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Awesome!'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final firestore = context.read<FirestoreService>();
