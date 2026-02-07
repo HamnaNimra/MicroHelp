@@ -95,6 +95,29 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 TrustScoreBadge(score: user.trustScore),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if (user.gender != null)
+                      Chip(
+                        avatar: const Icon(Icons.person, size: 18),
+                        label: Text(user.gender!),
+                      ),
+                    if (user.ageRange != null)
+                      Chip(
+                        avatar: const Icon(Icons.cake, size: 18),
+                        label: Text(user.ageRange!),
+                      ),
+                    if (user.accountAge != null)
+                      Chip(
+                        avatar: const Icon(Icons.schedule, size: 18),
+                        label: Text(user.accountAge!),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).push(
