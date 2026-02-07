@@ -60,13 +60,53 @@ class TaskCompletionScreen extends StatelessWidget {
                     onPressed: uid == null
                         ? null
                         : () async {
-                            await firestore.completePost(postId, uid);
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Task marked complete.')),
-                              );
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Mark as completed?'),
+                                content: Text(
+                                  isHelper
+                                      ? 'Confirm this task is done. You\'ll earn +1 trust score!'
+                                      : 'Confirm this task is done. The helper will receive trust score.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text('Complete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true) return;
+                            if (!context.mounted) return;
+                            try {
+                              await firestore.completePost(postId, uid);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isHelper
+                                          ? 'Task completed! You earned +1 trust score.'
+                                          : 'Task marked complete!',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to complete task. Check your connection and try again.'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
                           },
                     child: const Text('Mark as completed'),
