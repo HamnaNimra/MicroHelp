@@ -138,6 +138,65 @@ class FirestoreService {
     await _messages(postId).add(message.toFirestore());
   }
 
+  // --------------- Per-chat sharing preferences ---------------
+
+  /// Returns a real-time stream of a user's sharing preferences for a specific chat.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> getChatSharing(
+      String postId, String userId) {
+    return _firestore
+        .collection('messages')
+        .doc(postId)
+        .collection('sharing')
+        .doc(userId)
+        .snapshots();
+  }
+
+  /// Updates sharing preferences for the current user in a specific chat.
+  /// Once shareName/sharePhone/sharePhoto are enabled, they cannot be disabled.
+  /// shareLocation can be toggled freely.
+  Future<void> updateChatSharing(
+    String postId,
+    String userId, {
+    bool? shareName,
+    bool? sharePhone,
+    bool? sharePhoto,
+    bool? shareLocation,
+  }) async {
+    final ref = _firestore
+        .collection('messages')
+        .doc(postId)
+        .collection('sharing')
+        .doc(userId);
+
+    final doc = await ref.get();
+    final current = doc.data() ?? {};
+
+    final updates = <String, dynamic>{};
+    // Once enabled, name/phone/photo cannot be un-shared
+    if (shareName == true && current['shareName'] != true) {
+      updates['shareName'] = true;
+    }
+    if (sharePhone == true && current['sharePhone'] != true) {
+      updates['sharePhone'] = true;
+    }
+    if (sharePhoto == true && current['sharePhoto'] != true) {
+      updates['sharePhoto'] = true;
+    }
+    // Location can be toggled freely
+    if (shareLocation != null) {
+      updates['shareLocation'] = shareLocation;
+    }
+
+    if (updates.isNotEmpty) {
+      await ref.set(updates, SetOptions(merge: true));
+    }
+  }
+
+  /// Gets a user document by ID.
+  Future<DocumentSnapshot<Map<String, dynamic>>> getUser(String userId) {
+    return _firestore.collection('users').doc(userId).get();
+  }
+
   /// Checks trust score against badge thresholds and awards any new badges.
   /// Returns the list of newly awarded badge definitions.
   Future<List<BadgeDefinition>> checkAndAwardBadges(String userId) async {
