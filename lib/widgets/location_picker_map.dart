@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import '../utils/geo_utils.dart';
 
 class LocationPickerMap extends StatefulWidget {
@@ -25,6 +27,8 @@ class LocationPickerMap extends StatefulWidget {
 class _LocationPickerMapState extends State<LocationPickerMap> {
   late final MapController _mapController;
   late LatLng _selectedPosition;
+  final _searchController = TextEditingController();
+  bool _searching = false;
 
   @override
   void initState() {
@@ -39,6 +43,7 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
   @override
   void dispose() {
     _mapController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -47,6 +52,48 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
     widget.onLocationChanged(
       GeoPoint(position.latitude, position.longitude),
     );
+  }
+
+  Future<void> _searchLocation() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
+    setState(() => _searching = true);
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': query,
+        'format': 'json',
+        'limit': '1',
+      });
+      final response = await http.get(uri, headers: {
+        'User-Agent': 'MicroHelp/1.0',
+      });
+      if (response.statusCode == 200) {
+        final results = jsonDecode(response.body) as List;
+        if (results.isNotEmpty) {
+          final lat = double.parse(results[0]['lat'] as String);
+          final lon = double.parse(results[0]['lon'] as String);
+          final newPos = LatLng(lat, lon);
+          setState(() => _selectedPosition = newPos);
+          _mapController.move(newPos, 12);
+          widget.onLocationChanged(GeoPoint(lat, lon));
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location not found. Try a different search.')),
+            );
+          }
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Search failed. Check your connection.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
   }
 
   bool get _showGpsWarning {
@@ -70,6 +117,33 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Search field
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Search city or address...',
+            border: const OutlineInputBorder(),
+            isDense: true,
+            prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: _searching
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.arrow_forward, size: 20),
+                    onPressed: _searchLocation,
+                  ),
+          ),
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _searchLocation(),
+        ),
+        const SizedBox(height: 8),
+        // Map
         Container(
           height: 300,
           decoration: BoxDecoration(
@@ -136,7 +210,7 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Tap the map to adjust your post location.',
+          'Tap the map or search to set your post location.',
           style: Theme.of(context).textTheme.bodySmall,
           textAlign: TextAlign.center,
         ),
