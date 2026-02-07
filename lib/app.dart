@@ -5,6 +5,7 @@ import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
 import 'services/analytics_service.dart';
 import 'services/preferences_service.dart';
+import 'services/storage_service.dart';
 import 'screens/splash_screen.dart';
 
 class MicroHelpApp extends StatelessWidget {
@@ -23,6 +24,7 @@ class MicroHelpApp extends StatelessWidget {
             previous ?? AuthService(notificationService),
         ),
         Provider(create: (_) => FirestoreService()),
+        Provider(create: (_) => StorageService()),
         Provider(create: (_) => AnalyticsService()),
         Provider.value(value: preferencesService),
       ],
