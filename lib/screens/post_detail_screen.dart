@@ -23,7 +23,17 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
-  PostModel? _post;
+  late Future<DocumentSnapshot<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPost();
+  }
+
+  void _loadPost() {
+    _future = context.read<FirestoreService>().getPost(widget.postId);
+  }
 
   Future<void> _blockUser(String postOwnerId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -77,214 +87,221 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final firestore = context.read<FirestoreService>();
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Post detail'),
-        actions: [
-          if (_post != null && _post!.userId == uid && !_post!.completed)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              tooltip: 'Edit post',
-              onPressed: () async {
-                final edited = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => EditPostScreen(
-                      post: _post!,
-                      postId: widget.postId,
-                    ),
-                  ),
-                );
-                if (edited == true && mounted) {
-                  setState(() => _post = null); // Force reload
-                }
-              },
-            ),
-          if (_post != null && _post!.userId != uid)
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'report') {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ReportScreen(
-                        reportedUserId: _post!.userId,
-                        reportedPostId: widget.postId,
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        PostModel? post;
+        if (snapshot.hasData && snapshot.data!.exists && snapshot.data!.data() != null) {
+          post = PostModel.fromFirestore(snapshot.data!);
+        }
+
+        final isOwner = post != null && post.userId == uid;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Post detail'),
+            actions: [
+              if (isOwner && !post!.completed)
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit post',
+                  onPressed: () async {
+                    final edited = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => EditPostScreen(
+                          post: post!,
+                          postId: widget.postId,
+                        ),
                       ),
-                    ),
-                  );
-                } else if (value == 'block') {
-                  _blockUser(_post!.userId);
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'report',
-                  child: ListTile(
-                    leading: Icon(Icons.flag, color: Colors.orange),
-                    title: Text('Report post'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                    );
+                    if (edited == true && mounted) {
+                      setState(() => _loadPost());
+                    }
+                  },
                 ),
-                PopupMenuItem(
-                  value: 'block',
-                  child: ListTile(
-                    leading: Icon(Icons.block, color: Colors.red),
-                    title: Text('Block user'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: firestore.getPost(widget.postId),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const ErrorView(
-              message: 'Could not load post. Check your connection.',
-            );
-          }
-          if (!snapshot.hasData) {
-            return const LoadingView(message: 'Loading post...');
-          }
-          final doc = snapshot.data!;
-          if (!doc.exists || doc.data() == null) {
-            return const ErrorView(message: 'Post not found.');
-          }
-          final post = PostModel.fromFirestore(doc);
-
-          // Update _post so the AppBar actions can access it.
-          if (_post == null) {
-            Future.microtask(() {
-              if (mounted) setState(() => _post = post);
-            });
-          }
-
-          final isOwner = post.userId == uid;
-          final isHelper = post.acceptedBy == uid;
-          final canAccept =
-              uid != null && !isOwner && post.acceptedBy == null && !post.completed;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                PostTypeChip(type: post.type),
-                const SizedBox(height: 16),
-                Text(
-                  post.description,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                if (post.estimatedMinutes != null) ...[
-                  const SizedBox(height: 8),
-                  Text('~${post.estimatedMinutes} min'),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  'Expires: ${post.expiresAt.toIso8601String().substring(0, 16)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isOwner
-                      ? 'Your post${post.anonymous ? ' (anonymous to others)' : ''}'
-                      : post.anonymous
-                          ? 'Anonymous'
-                          : 'User: ${post.userId.substring(0, 8)}...',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (post.location != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    'Location',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  PostLocationMap(
-                    location: post.location!,
-                    radiusKm: post.radius,
-                    isGlobal: post.global,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    post.global
-                        ? 'Global post (visible everywhere)'
-                        : 'Visible within ${post.radius.toStringAsFixed(0)} km',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                const SizedBox(height: 24),
-                if (canAccept)
-                  FilledButton(
-                    onPressed: () async {
-                      if (uid == null) return;
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Accept this task?'),
-                          content: const Text(
-                            'You\'re committing to help. The poster will be notified immediately.',
+              if (post != null && !isOwner)
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'report') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ReportScreen(
+                            reportedUserId: post!.userId,
+                            reportedPostId: widget.postId,
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Accept'),
-                            ),
-                          ],
                         ),
                       );
-                      if (confirmed != true) return;
-                      if (!context.mounted) return;
-                      try {
-                        await firestore.acceptPost(widget.postId, uid);
-                        context.read<AnalyticsService>().logPostAccepted();
-                        if (context.mounted) {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => ChatScreen(postId: widget.postId),
-                            ),
-                          );
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to accept. Check your connection and try again.'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text('Accept'),
-                  ),
-                if (isHelper || isOwner) ...[
-                  if (!post.completed)
-                    FilledButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(postId: widget.postId),
-                        ),
+                    } else if (value == 'block') {
+                      _blockUser(post!.userId);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'report',
+                      child: ListTile(
+                        leading: Icon(Icons.flag, color: Colors.orange),
+                        title: Text('Report post'),
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      child: const Text('Open chat'),
                     ),
-                  if (post.completed)
-                    const Chip(
-                        label: Text('Completed', style: TextStyle(color: Colors.white)),
-                        backgroundColor: Colors.grey),
-                ],
-              ],
+                    PopupMenuItem(
+                      value: 'block',
+                      child: ListTile(
+                        leading: Icon(Icons.block, color: Colors.red),
+                        title: Text('Block user'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          body: _buildBody(context, snapshot, post, uid),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot,
+    PostModel? post,
+    String? uid,
+  ) {
+    if (snapshot.hasError) {
+      return const ErrorView(
+        message: 'Could not load post. Check your connection.',
+      );
+    }
+    if (!snapshot.hasData) {
+      return const LoadingView(message: 'Loading post...');
+    }
+    if (post == null) {
+      return const ErrorView(message: 'Post not found.');
+    }
+
+    final isOwner = post.userId == uid;
+    final isHelper = post.acceptedBy == uid;
+    final canAccept =
+        uid != null && !isOwner && post.acceptedBy == null && !post.completed;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PostTypeChip(type: post.type),
+          const SizedBox(height: 16),
+          Text(
+            post.description,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          if (post.estimatedMinutes != null) ...[
+            const SizedBox(height: 8),
+            Text('~${post.estimatedMinutes} min'),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Expires: ${post.expiresAt.toIso8601String().substring(0, 16)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isOwner
+                ? 'Your post${post.anonymous ? ' (anonymous to others)' : ''}'
+                : post.anonymous
+                    ? 'Anonymous'
+                    : 'User: ${post.userId.substring(0, 8)}...',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (post.location != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Location',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
-          );
-        },
+            const SizedBox(height: 8),
+            PostLocationMap(
+              location: post.location!,
+              radiusKm: post.radius,
+              isGlobal: post.global,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              post.global
+                  ? 'Global post (visible everywhere)'
+                  : 'Visible within ${post.radius.toStringAsFixed(0)} km',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          const SizedBox(height: 24),
+          if (canAccept)
+            FilledButton(
+              onPressed: () async {
+                if (uid == null) return;
+                final firestore = context.read<FirestoreService>();
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Accept this task?'),
+                    content: const Text(
+                      'You\'re committing to help. The poster will be notified immediately.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Accept'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                if (!context.mounted) return;
+                try {
+                  await firestore.acceptPost(widget.postId, uid);
+                  context.read<AnalyticsService>().logPostAccepted();
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(postId: widget.postId),
+                      ),
+                    );
+                  }
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to accept. Check your connection and try again.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Accept'),
+            ),
+          if (isHelper || isOwner) ...[
+            if (!post.completed && post.acceptedBy != null)
+              FilledButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(postId: widget.postId),
+                  ),
+                ),
+                child: const Text('Open chat'),
+              ),
+            if (post.completed)
+              const Chip(
+                  label: Text('Completed', style: TextStyle(color: Colors.white)),
+                  backgroundColor: Colors.grey),
+          ],
+        ],
       ),
     );
   }
