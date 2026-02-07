@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/analytics_service.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -176,6 +177,13 @@ class _AuthScreenState extends State<AuthScreen> {
               _emailController.text.trim(), _passwordController.text);
       if (cred?.user != null) {
         await auth.getOrCreateUser(cred!.user!);
+        final analytics = context.read<AnalyticsService>();
+        if (_isSignUp) {
+          analytics.logSignUp(method: 'email');
+        } else {
+          analytics.logLogin(method: 'email');
+        }
+        analytics.setUserProperties(userId: cred.user!.uid);
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -197,6 +205,9 @@ class _AuthScreenState extends State<AuthScreen> {
       final cred = await auth.signInWithGoogle();
       if (cred?.user != null) {
         await auth.getOrCreateUser(cred!.user!);
+        final analytics = context.read<AnalyticsService>();
+        analytics.logLogin(method: 'google');
+        analytics.setUserProperties(userId: cred.user!.uid);
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -218,6 +229,9 @@ class _AuthScreenState extends State<AuthScreen> {
       final cred = await auth.signInWithApple();
       if (cred?.user != null) {
         await auth.getOrCreateUser(cred!.user!);
+        final analytics = context.read<AnalyticsService>();
+        analytics.logLogin(method: 'apple');
+        analytics.setUserProperties(userId: cred.user!.uid);
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
