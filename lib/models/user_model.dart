@@ -10,6 +10,9 @@ class UserModel {
   final String? fcmToken;
   final String? gender;
   final String? ageRange;
+  final DateTime? birthday;
+  final String? neighborhood;
+  final String? bio;
   final DateTime? createdAt;
   final bool idVerified;
   final List<String> blockedUsers;
@@ -24,6 +27,9 @@ class UserModel {
     this.fcmToken,
     this.gender,
     this.ageRange,
+    this.birthday,
+    this.neighborhood,
+    this.bio,
     this.createdAt,
     this.idVerified = false,
     this.blockedUsers = const [],
