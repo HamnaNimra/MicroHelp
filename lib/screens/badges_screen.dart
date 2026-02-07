@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants/badges.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/trust_score_badge.dart';
@@ -37,7 +38,11 @@ class BadgesScreen extends StatelessWidget {
                 .collection('badges')
                 .snapshots(),
             builder: (context, badgeSnapshot) {
-              final badges = badgeSnapshot.data?.docs ?? [];
+              final earnedIds =
+                  badgeSnapshot.data?.docs.map((d) => d.id).toSet() ?? {};
+              final earnedDocs = {
+                for (final d in badgeSnapshot.data?.docs ?? []) d.id: d.data()
+              };
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
@@ -54,27 +59,58 @@ class BadgesScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),
-                    if (badges.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'No badges yet. Complete tasks to earn badges!',
-                          textAlign: TextAlign.center,
+                    ...availableBadges.map((badge) {
+                      final earned = earnedIds.contains(badge.id);
+                      final data = earnedDocs[badge.id];
+                      final earnedAt = data != null
+                          ? (data['earnedAt'] as Timestamp?)?.toDate()
+                          : null;
+
+                      // Progress hint for score-based badges
+                      String? progress;
+                      if (!earned && badge.trustScoreThreshold != null) {
+                        final remaining =
+                            badge.trustScoreThreshold! - trustScore;
+                        if (remaining > 0) {
+                          progress = 'Complete $remaining more task${remaining == 1 ? '' : 's'}';
+                        }
+                      }
+
+                      return Card(
+                        color: earned ? null : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        child: ListTile(
+                          leading: Icon(
+                            badge.icon,
+                            color: earned ? Colors.amber : Colors.grey,
+                            size: 32,
+                          ),
+                          title: Text(
+                            badge.name,
+                            style: TextStyle(
+                              color: earned ? null : Colors.grey,
+                              fontWeight:
+                                  earned ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          subtitle: Text(
+                            earned
+                                ? badge.description +
+                                    (earnedAt != null
+                                        ? '\nEarned ${earnedAt.day}/${earnedAt.month}/${earnedAt.year}'
+                                        : '')
+                                : progress ?? badge.description,
+                            style: TextStyle(
+                              color: earned ? null : Colors.grey,
+                            ),
+                          ),
+                          trailing: earned
+                              ? const Icon(Icons.check_circle,
+                                  color: Colors.green)
+                              : const Icon(Icons.lock_outline,
+                                  color: Colors.grey),
                         ),
-                      )
-                    else
-                      ...badges.map((doc) {
-                        final data = doc.data();
-                        final name = data['name'] as String? ?? 'Badge';
-                        final desc =
-                            data['description'] as String? ?? '';
-                        return ListTile(
-                          leading: const Icon(Icons.emoji_events),
-                          title: Text(name),
-                          subtitle:
-                              desc.isNotEmpty ? Text(desc) : null,
-                        );
-                      }),
+                      );
+                    }),
                   ],
                 ),
               );
