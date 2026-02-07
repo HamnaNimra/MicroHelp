@@ -11,6 +11,7 @@ import 'landing_screen.dart';
 import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
 import 'onboarding_screen.dart';
+import 'verify_identity_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
