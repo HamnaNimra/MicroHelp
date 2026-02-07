@@ -13,6 +13,7 @@ import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
 import 'onboarding_screen.dart';
 import 'verify_identity_screen.dart';
+import 'my_posts_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -267,6 +268,16 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.edit),
                   label: const Text('Edit profile'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MyPostsScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.post_add),
+                  label: const Text('My Posts'),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
