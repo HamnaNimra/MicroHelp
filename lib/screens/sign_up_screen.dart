@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/legal_text.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
+import '../widgets/location_autocomplete_field.dart';
 import '../widgets/password_strength_meter.dart';
 import 'auth_screen.dart';
 import 'complete_profile_screen.dart';
@@ -243,14 +244,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 16),
 
                 // Neighborhood / Postal code
-                TextFormField(
+                LocationAutocompleteField(
                   controller: _neighborhoodCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Neighborhood or postal code',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                    helperText: 'Helps connect you with nearby neighbors',
-                  ),
+                  helperText: 'Helps connect you with nearby neighbors',
                 ),
                 const SizedBox(height: 16),
 
