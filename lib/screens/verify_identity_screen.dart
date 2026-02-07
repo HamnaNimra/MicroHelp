@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../services/storage_service.dart';
 
 class VerifyIdentityScreen extends StatefulWidget {
@@ -20,10 +22,25 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
   XFile? _idPhoto;
   XFile? _selfiePhoto;
 
+  // QR code session state
+  String? _qrSessionId;
+  StreamSubscription<DocumentSnapshot>? _qrPollSub;
+  Timer? _qrExpiryTimer;
+  Duration _qrTimeRemaining = Duration.zero;
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
     _checkExistingRequest();
+  }
+
+  @override
+  void dispose() {
+    _qrPollSub?.cancel();
+    _qrExpiryTimer?.cancel();
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _checkExistingRequest() async {
@@ -45,15 +62,14 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
     }
   }
 
-  Future<void> _pickImage({required bool isSelfie}) async {
+  Future<void> _pickIdPhoto() async {
     final picker = ImagePicker();
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isSelfie ? 'Take a selfie' : 'Photo of your ID'),
-        content: Text(isSelfie
-            ? 'Take a clear photo of yourself holding your ID.'
-            : 'Take a clear photo of your government-issued ID.'),
+        title: const Text('Photo of your ID'),
+        content: const Text(
+            'Take a clear photo of your government-issued ID.'),
         actions: [
           TextButton.icon(
             onPressed: () => Navigator.pop(ctx, ImageSource.camera),
@@ -76,25 +92,155 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
       maxHeight: 1200,
       imageQuality: 80,
     );
-    if (picked == null) return;
+    if (picked != null && mounted) {
+      setState(() => _idPhoto = picked);
+    }
+  }
+
+  Future<void> _takeSelfie() async {
+    final picker = ImagePicker();
+    try {
+      final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+        preferredCameraDevice: CameraDevice.front,
+      );
+      if (picked != null && mounted) {
+        setState(() => _selfiePhoto = picked);
+      }
+    } catch (e) {
+      // Camera not available — offer QR code fallback
+      if (mounted) {
+        final useQr = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Camera unavailable'),
+            content: const Text(
+              'Your device doesn\'t seem to have a camera available. '
+              'You can scan a QR code with your phone to take the selfie there instead.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.qr_code),
+                label: const Text('Show QR code'),
+              ),
+            ],
+          ),
+        );
+        if (useQr == true && mounted) {
+          _startQrSession();
+        }
+      }
+    }
+  }
+
+  Future<void> _startQrSession() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    // Create a Firestore session document with a 1-hour expiry
+    final expiresAt = DateTime.now().add(const Duration(hours: 1));
+    final docRef =
+        await FirebaseFirestore.instance.collection('selfie_sessions').add({
+      'userId': uid,
+      'expiresAt': Timestamp.fromDate(expiresAt),
+      'selfieUrl': null,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
     setState(() {
-      if (isSelfie) {
-        _selfiePhoto = picked;
+      _qrSessionId = docRef.id;
+      _qrTimeRemaining = const Duration(hours: 1);
+    });
+
+    // Start countdown timer
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final remaining = expiresAt.difference(DateTime.now());
+      if (remaining.isNegative) {
+        _cancelQrSession(expired: true);
       } else {
-        _idPhoto = picked;
+        setState(() => _qrTimeRemaining = remaining);
+      }
+    });
+
+    // Poll for selfie upload
+    _qrPollSub?.cancel();
+    _qrPollSub = FirebaseFirestore.instance
+        .collection('selfie_sessions')
+        .doc(docRef.id)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      final data = snap.data();
+      if (data == null) return;
+      final selfieUrl = data['selfieUrl'] as String?;
+      if (selfieUrl != null && selfieUrl.isNotEmpty) {
+        // Selfie uploaded via QR flow — store the URL and clear QR state
+        _qrPollSub?.cancel();
+        _countdownTimer?.cancel();
+        setState(() {
+          // We'll store the URL in a special way — create a fake XFile isn't ideal,
+          // so we store the URL directly and handle it in _submitRequest.
+          _qrSelfieUrl = selfieUrl;
+          _qrSessionId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Selfie received from your phone!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     });
   }
+
+  String? _qrSelfieUrl;
+
+  void _cancelQrSession({bool expired = false}) {
+    _qrPollSub?.cancel();
+    _countdownTimer?.cancel();
+    if (_qrSessionId != null) {
+      // Delete the session doc
+      FirebaseFirestore.instance
+          .collection('selfie_sessions')
+          .doc(_qrSessionId)
+          .delete();
+    }
+    if (mounted) {
+      setState(() {
+        _qrSessionId = null;
+        _qrTimeRemaining = Duration.zero;
+      });
+      if (expired) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('QR session expired. Please try again.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  bool get _hasSelfie => _selfiePhoto != null || _qrSelfieUrl != null;
 
   Future<void> _submitRequest() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    if (_idPhoto == null || _selfiePhoto == null) {
+    if (_idPhoto == null || !_hasSelfie) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please upload both your ID photo and selfie.'),
+          content: Text('Please provide both your ID photo and selfie.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -107,18 +253,24 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
       final storage = context.read<StorageService>();
 
       final idBytes = await _idPhoto!.readAsBytes();
-      final selfieBytes = await _selfiePhoto!.readAsBytes();
-
       final idUrl = await storage.uploadVerificationImage(
         userId: uid,
         imageType: 'id',
         bytes: idBytes,
       );
-      final selfieUrl = await storage.uploadVerificationImage(
-        userId: uid,
-        imageType: 'selfie',
-        bytes: selfieBytes,
-      );
+
+      String selfieUrl;
+      if (_qrSelfieUrl != null) {
+        // Selfie was uploaded via QR flow — URL already in Storage
+        selfieUrl = _qrSelfieUrl!;
+      } else {
+        final selfieBytes = await _selfiePhoto!.readAsBytes();
+        selfieUrl = await storage.uploadVerificationImage(
+          userId: uid,
+          imageType: 'selfie',
+          bytes: selfieBytes,
+        );
+      }
 
       await FirebaseFirestore.instance
           .collection('verification_requests')
@@ -134,7 +286,8 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
         setState(() => _alreadyRequested = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Verification request submitted! We\'ll review it soon.'),
+            content:
+                Text('Verification request submitted! We\'ll review it soon.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -166,6 +319,7 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Header
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -199,6 +353,8 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  // Steps
                   Text(
                     'How it works',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -215,9 +371,11 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
                   ),
                   const _StepTile(
                     number: '2',
-                    title: 'Take a selfie with your ID',
+                    title: 'Take a live selfie with your ID',
                     subtitle:
-                        'Take a photo of yourself holding your ID next to your face.',
+                        'Use your camera to take a real-time photo of yourself '
+                        'holding your ID. No gallery uploads allowed for security. '
+                        'If your device has no camera, scan a QR code to use your phone.',
                   ),
                   const _StepTile(
                     number: '3',
@@ -232,6 +390,7 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
                         'Once approved, a verified badge appears on your profile.',
                   ),
                   const SizedBox(height: 24),
+
                   if (_alreadyRequested)
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -257,28 +416,46 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
                       ),
                     )
                   else ...[
-                    // ID photo upload
+                    // ID photo upload (camera or gallery)
                     _PhotoUploadCard(
                       title: 'Government ID',
                       subtitle: 'Photo of your government-issued ID',
                       icon: Icons.badge_outlined,
                       hasPhoto: _idPhoto != null,
-                      onTap: _submitting
-                          ? null
-                          : () => _pickImage(isSelfie: false),
+                      onTap: _submitting ? null : _pickIdPhoto,
                     ),
                     const SizedBox(height: 12),
 
-                    // Selfie upload
-                    _PhotoUploadCard(
-                      title: 'Selfie with ID',
-                      subtitle: 'Photo of you holding your ID',
-                      icon: Icons.face,
-                      hasPhoto: _selfiePhoto != null,
-                      onTap: _submitting
-                          ? null
-                          : () => _pickImage(isSelfie: true),
-                    ),
+                    // Selfie capture (camera only) or QR code flow
+                    if (_qrSessionId != null)
+                      _QrSessionCard(
+                        sessionId: _qrSessionId!,
+                        timeRemaining: _qrTimeRemaining,
+                        onCancel: () => _cancelQrSession(),
+                      )
+                    else
+                      _PhotoUploadCard(
+                        title: 'Live selfie with ID',
+                        subtitle: _hasSelfie
+                            ? 'Selfie captured — tap to retake'
+                            : 'Take a real-time photo holding your ID',
+                        icon: Icons.face,
+                        hasPhoto: _hasSelfie,
+                        onTap: _submitting ? null : _takeSelfie,
+                        cameraOnly: true,
+                      ),
+
+                    if (!_hasSelfie && _qrSessionId == null) ...[
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _submitting ? null : _startQrSession,
+                          icon: const Icon(Icons.qr_code, size: 18),
+                          label: const Text('No camera? Use QR code instead'),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 24),
 
                     // Submit button
@@ -314,6 +491,104 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
   }
 }
 
+/// Card showing the QR code for the mobile selfie upload session.
+class _QrSessionCard extends StatelessWidget {
+  const _QrSessionCard({
+    required this.sessionId,
+    required this.timeRemaining,
+    required this.onCancel,
+  });
+
+  final String sessionId;
+  final Duration timeRemaining;
+  final VoidCallback onCancel;
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '${minutes}:${seconds}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // The QR code value is the session ID — the mobile upload page
+    // will use this to find the Firestore document and upload the selfie.
+    final qrData = 'microhelp://selfie-session/$sessionId';
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text(
+              'Scan with your phone',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Open the camera app on your phone and scan this QR code to take your selfie there.',
+              style: theme.textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: QrImageView(
+                data: qrData,
+                version: QrVersions.auto,
+                size: 200,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.timer_outlined,
+                    size: 18, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'Expires in ${_formatDuration(timeRemaining)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: timeRemaining.inMinutes < 5
+                        ? Colors.red
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            CircularProgressIndicator(
+              value: timeRemaining.inSeconds / 3600,
+              strokeWidth: 3,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Waiting for selfie...',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onCancel,
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PhotoUploadCard extends StatelessWidget {
   const _PhotoUploadCard({
     required this.title,
@@ -321,6 +596,7 @@ class _PhotoUploadCard extends StatelessWidget {
     required this.icon,
     required this.hasPhoto,
     required this.onTap,
+    this.cameraOnly = false,
   });
 
   final String title;
@@ -328,6 +604,7 @@ class _PhotoUploadCard extends StatelessWidget {
   final IconData icon;
   final bool hasPhoto;
   final VoidCallback? onTap;
+  final bool cameraOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +628,9 @@ class _PhotoUploadCard extends StatelessWidget {
                 ),
                 child: Icon(
                   hasPhoto ? Icons.check_circle : icon,
-                  color: hasPhoto ? Colors.green : theme.colorScheme.onSurfaceVariant,
+                  color: hasPhoto
+                      ? Colors.green
+                      : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 16),
@@ -369,11 +648,19 @@ class _PhotoUploadCard extends StatelessWidget {
                       hasPhoto ? 'Photo selected — tap to retake' : subtitle,
                       style: theme.textTheme.bodySmall,
                     ),
+                    if (cameraOnly && !hasPhoto)
+                      Text(
+                        'Camera only — no gallery uploads',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                   ],
                 ),
               ),
               Icon(
-                Icons.camera_alt_outlined,
+                cameraOnly ? Icons.camera_alt : Icons.camera_alt_outlined,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ],
