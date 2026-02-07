@@ -18,6 +18,10 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   void _showDeleteAccountDialog(BuildContext context) {
+    final auth = context.read<AuthService>();
+    final provider = auth.getSignInProvider();
+    final isPasswordUser = provider == 'password';
+
     final passwordCtrl = TextEditingController();
     bool deleting = false;
     String? error;
@@ -36,18 +40,32 @@ class ProfileScreen extends StatelessWidget {
                 'This will permanently delete your account and all your data. '
                 'This action cannot be undone.',
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordCtrl,
-                obscureText: true,
-                enabled: !deleting,
-                decoration: InputDecoration(
-                  labelText: 'Enter your password to confirm',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  errorText: error,
+              if (isPasswordUser) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  enabled: !deleting,
+                  decoration: InputDecoration(
+                    labelText: 'Enter your password to confirm',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    errorText: error,
+                  ),
                 ),
-              ),
+              ] else ...[
+                const SizedBox(height: 16),
+                Text(
+                  provider == 'google.com'
+                      ? 'You will be asked to sign in with Google to confirm.'
+                      : 'You will be asked to sign in with Apple to confirm.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                ],
+              ],
             ],
           ),
           actions: [
@@ -59,8 +77,7 @@ class ProfileScreen extends StatelessWidget {
               onPressed: deleting
                   ? null
                   : () async {
-                      final password = passwordCtrl.text;
-                      if (password.isEmpty) {
+                      if (isPasswordUser && passwordCtrl.text.isEmpty) {
                         setDialogState(() => error = 'Enter your password');
                         return;
                       }
@@ -69,7 +86,11 @@ class ProfileScreen extends StatelessWidget {
                         error = null;
                       });
                       try {
-                        await context.read<AuthService>().deleteAccount(password);
+                        if (isPasswordUser) {
+                          await auth.deleteAccount(passwordCtrl.text);
+                        } else {
+                          await auth.deleteAccountWithProvider();
+                        }
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (context.mounted) {
                           Navigator.of(context).pushAndRemoveUntil(
@@ -110,7 +131,9 @@ class ProfileScreen extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Delete permanently'),
+                  : Text(isPasswordUser
+                      ? 'Delete permanently'
+                      : 'Continue with ${provider == 'google.com' ? 'Google' : 'Apple'}'),
             ),
           ],
         ),
