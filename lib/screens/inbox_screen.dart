@@ -97,16 +97,21 @@ class _ChatsList extends StatelessWidget {
             final chatItems = <_ChatItem>[];
             for (final doc in helpingDocs) {
               final post = PostModel.fromFirestore(doc);
-              if (!post.completed) {
-                chatItems.add(_ChatItem(post: post, postId: doc.id, isHelping: true));
-              }
+              chatItems.add(_ChatItem(post: post, postId: doc.id, isHelping: true));
             }
             for (final doc in myPostsDocs) {
               final post = PostModel.fromFirestore(doc);
-              if (post.acceptedBy != null && !post.completed) {
+              if (post.acceptedBy != null) {
                 chatItems.add(_ChatItem(post: post, postId: doc.id, isHelping: false));
               }
             }
+            // Sort: active first, then completed
+            chatItems.sort((a, b) {
+              if (a.post.completed != b.post.completed) {
+                return a.post.completed ? 1 : -1;
+              }
+              return b.post.expiresAt.compareTo(a.post.expiresAt);
+            });
 
             Widget content;
             if (chatItems.isEmpty) {
@@ -178,17 +183,35 @@ class _ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final IconData leadingIcon;
+    final Color leadingColor;
+    final String subtitle;
+
+    if (post.completed) {
+      leadingIcon = Icons.check_circle;
+      leadingColor = Colors.grey;
+      subtitle = isHelping ? 'Completed — you helped' : 'Completed — your post';
+    } else if (post.completionRequestedBy != null) {
+      leadingIcon = Icons.hourglass_top;
+      leadingColor = Colors.orange;
+      subtitle = isHelping ? 'You\'re helping — approval pending' : 'Your post — approval pending';
+    } else {
+      leadingIcon = Icons.chat_bubble;
+      leadingColor = Colors.blue;
+      subtitle = isHelping ? 'You\'re helping' : 'Your post — chat';
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        leading: const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
+        leading: Icon(leadingIcon, color: leadingColor, size: 24),
         title: Text(
           post.description,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          isHelping ? 'You\'re helping' : 'Your post — chat',
+          subtitle,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         trailing: const Icon(Icons.chevron_right),

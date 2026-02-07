@@ -222,6 +222,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     : 'User: ${post.userId.substring(0, 8)}...',
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          // Always show poster's gender and age range
+          if (post.posterGender != null || post.posterAgeRange != null) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              children: [
+                if (post.posterGender != null)
+                  Chip(
+                    avatar: const Icon(Icons.person, size: 16),
+                    label: Text(post.posterGender!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (post.posterAgeRange != null)
+                  Chip(
+                    avatar: const Icon(Icons.cake, size: 16),
+                    label: Text(post.posterAgeRange!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ],
           if (post.location != null) ...[
             const SizedBox(height: 16),
             Text(

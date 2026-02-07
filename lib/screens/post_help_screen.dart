@@ -31,6 +31,10 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   GeoPoint? _selectedLocation; // User-picked pin on map
   bool _loadingLocation = false;
 
+  // Poster info (for anonymous posts that still show gender/age)
+  String? _posterGender;
+  String? _posterAgeRange;
+
   @override
   void initState() {
     super.initState();
@@ -54,7 +58,10 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
             .collection('users')
             .doc(uid)
             .get();
-        final savedLocation = doc.data()?['location'] as GeoPoint?;
+        final data = doc.data();
+        final savedLocation = data?['location'] as GeoPoint?;
+        _posterGender = data?['gender'] as String?;
+        _posterAgeRange = data?['ageRange'] as String?;
         if (savedLocation != null && mounted) {
           setState(() {
             _gpsLocation = savedLocation;
@@ -213,6 +220,8 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
         expiresAt: _expiresAt,
         anonymous: _anonymous,
         estimatedMinutes: _estimatedMinutes,
+        posterGender: _posterGender,
+        posterAgeRange: _posterAgeRange,
       );
 
       await context.read<FirestoreService>().createPost(post);

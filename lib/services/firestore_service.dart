@@ -55,8 +55,47 @@ class FirestoreService {
     await ref.update({'acceptedBy': userId});
   }
 
-  /// Completes the post. If [currentUserId] is the helper (acceptedBy),
-  /// also increments their trust score in a transaction (works on Spark plan without Cloud Functions).
+  /// Helper or owner requests completion. Sets completionRequestedBy
+  /// so the other party can approve.
+  Future<void> requestCompletion(String postId, String requestedByUid) async {
+    await _posts.doc(postId).update({
+      'completionRequestedBy': requestedByUid,
+    });
+  }
+
+  /// Approves a completion request (called by the other party).
+  /// Marks the post as completed and awards trust score to the helper.
+  Future<void> approveCompletion(String postId) async {
+    final postRef = _posts.doc(postId);
+    final postSnap = await postRef.get();
+    if (!postSnap.exists || postSnap.data() == null) return;
+    final data = postSnap.data()!;
+    if (data['completed'] == true) return;
+
+    final helperId = data['acceptedBy'] as String?;
+
+    if (helperId != null) {
+      final userRef = _firestore.collection('users').doc(helperId);
+      await _firestore.runTransaction((tx) async {
+        final post = await tx.get(postRef);
+        if (post.data()?['completed'] == true) return;
+        tx.update(postRef, {
+          'completed': true,
+          'completionRequestedBy': FieldValue.delete(),
+        });
+        final userSnap = await tx.get(userRef);
+        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
+        tx.update(userRef, {'trustScore': current + 1});
+      });
+    } else {
+      await postRef.update({
+        'completed': true,
+        'completionRequestedBy': FieldValue.delete(),
+      });
+    }
+  }
+
+  /// Direct completion (owner can always directly complete their own task).
   Future<void> completePost(String postId, String currentUserId) async {
     final postRef = _posts.doc(postId);
     final postSnap = await postRef.get();
@@ -65,20 +104,27 @@ class FirestoreService {
     if (data['completed'] == true) return;
 
     final helperId = data['acceptedBy'] as String?;
-    final isHelper = helperId == currentUserId;
+    final isOwner = data['userId'] == currentUserId;
 
-    if (isHelper && helperId != null) {
+    // Owner completing = direct approve, give helper trust score
+    if (isOwner && helperId != null) {
       final userRef = _firestore.collection('users').doc(helperId);
       await _firestore.runTransaction((tx) async {
         final post = await tx.get(postRef);
         if (post.data()?['completed'] == true) return;
-        tx.update(postRef, {'completed': true});
+        tx.update(postRef, {
+          'completed': true,
+          'completionRequestedBy': FieldValue.delete(),
+        });
         final userSnap = await tx.get(userRef);
         final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
         tx.update(userRef, {'trustScore': current + 1});
       });
     } else {
-      await postRef.update({'completed': true});
+      await postRef.update({
+        'completed': true,
+        'completionRequestedBy': FieldValue.delete(),
+      });
     }
   }
 

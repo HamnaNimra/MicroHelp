@@ -15,6 +15,9 @@ class PostModel {
   final bool completed;
   final bool anonymous;
   final int? estimatedMinutes;
+  final String? posterGender;
+  final String? posterAgeRange;
+  final String? completionRequestedBy;
 
   const PostModel({
     this.id = '',
@@ -29,6 +32,9 @@ class PostModel {
     this.completed = false,
     this.anonymous = false,
     this.estimatedMinutes,
+    this.posterGender,
+    this.posterAgeRange,
+    this.completionRequestedBy,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
@@ -46,6 +52,9 @@ class PostModel {
       completed: data['completed'] as bool? ?? false,
       anonymous: data['anonymous'] as bool? ?? false,
       estimatedMinutes: data['estimatedMinutes'] as int?,
+      posterGender: data['posterGender'] as String?,
+      posterAgeRange: data['posterAgeRange'] as String?,
+      completionRequestedBy: data['completionRequestedBy'] as String?,
     );
   }
 
@@ -62,6 +71,9 @@ class PostModel {
       'completed': completed,
       'anonymous': anonymous,
       if (estimatedMinutes != null) 'estimatedMinutes': estimatedMinutes,
+      if (posterGender != null) 'posterGender': posterGender,
+      if (posterAgeRange != null) 'posterAgeRange': posterAgeRange,
+      if (completionRequestedBy != null) 'completionRequestedBy': completionRequestedBy,
     };
   }
 }

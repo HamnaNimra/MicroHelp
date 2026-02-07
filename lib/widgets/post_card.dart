@@ -52,6 +52,20 @@ class PostCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
+            // Always show poster's gender and age range
+            if (post.posterGender != null || post.posterAgeRange != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  [
+                    if (post.posterGender != null) post.posterGender!,
+                    if (post.posterAgeRange != null) post.posterAgeRange!,
+                  ].join(' · '),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
             if (distanceKm != null)
               Text(
                 distanceKm! < 1

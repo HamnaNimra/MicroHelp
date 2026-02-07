@@ -200,6 +200,57 @@ class AuthService {
       await _notificationService.deleteToken();
     } catch (_) {}
 
+    // Delete user's uncompleted posts that have no active chat
+    final userPosts = await _firestore
+        .collection('posts')
+        .where('userId', isEqualTo: uid)
+        .get();
+    for (final doc in userPosts.docs) {
+      final data = doc.data();
+      if (data['acceptedBy'] == null) {
+        // No helper involved — safe to delete entirely
+        await doc.reference.delete();
+      } else {
+        // Has a chat — mark as deleted user, keep for the other party
+        await doc.reference.update({
+          'userDeleted': true,
+          'completed': true,
+        });
+      }
+    }
+
+    // Mark posts where this user was the helper
+    final helpingPosts = await _firestore
+        .collection('posts')
+        .where('acceptedBy', isEqualTo: uid)
+        .get();
+    for (final doc in helpingPosts.docs) {
+      await doc.reference.update({
+        'helperDeleted': true,
+        'completed': true,
+      });
+    }
+
+    // Send a system message in each active chat this user was part of
+    final allChatPostIds = <String>{};
+    for (final doc in userPosts.docs) {
+      if (doc.data()['acceptedBy'] != null) allChatPostIds.add(doc.id);
+    }
+    for (final doc in helpingPosts.docs) {
+      allChatPostIds.add(doc.id);
+    }
+    for (final postId in allChatPostIds) {
+      await _firestore
+          .collection('messages')
+          .doc(postId)
+          .collection('messages')
+          .add({
+        'senderId': 'system',
+        'text': 'This user has deleted their account.',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+
     // Delete badges sub-collection
     final badgesSnap = await _firestore
         .collection('users')

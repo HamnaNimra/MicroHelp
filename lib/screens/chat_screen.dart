@@ -228,6 +228,25 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, i) {
                     final msg = messages[i];
+                    // System messages (e.g. user deleted account)
+                    if (msg.senderId == 'system') {
+                      return Center(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            msg.text,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onErrorContainer,
+                                ),
+                          ),
+                        ),
+                      );
+                    }
                     return MessageBubble(
                       message: msg,
                       isMe: msg.senderId == uid,
