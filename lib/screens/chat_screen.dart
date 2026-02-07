@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/message_model.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/loading_view.dart';
@@ -69,6 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     try {
       await context.read<FirestoreService>().sendMessage(widget.postId, message);
+      context.read<AnalyticsService>().logMessageSent();
       _textController.clear();
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
