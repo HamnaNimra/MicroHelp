@@ -215,6 +215,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                       .toList(),
                   onChanged: (v) => setState(() => _gender = v),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Select your gender' : null,
                 ),
 
                 // "Other" gender text field
