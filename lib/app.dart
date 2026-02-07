@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
+import 'services/preferences_service.dart';
 import 'screens/splash_screen.dart';
-import 'screens/landing_screen.dart';
-import 'screens/home_screen.dart';
 
 class MicroHelpApp extends StatelessWidget {
-  const MicroHelpApp({super.key});
+  const MicroHelpApp({super.key, required this.preferencesService});
+
+  final PreferencesService preferencesService;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +22,7 @@ class MicroHelpApp extends StatelessWidget {
             previous ?? AuthService(notificationService),
         ),
         Provider(create: (_) => FirestoreService()),
+        Provider.value(value: preferencesService),
       ],
       child: MaterialApp(
         title: 'MicroHelp',
