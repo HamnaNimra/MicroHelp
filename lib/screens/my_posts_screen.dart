@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../models/post_model.dart';
+import '../services/preferences_service.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/error_view.dart';
+import '../widgets/first_time_tip_banner.dart';
 import '../widgets/loading_view.dart';
 import 'post_detail_screen.dart';
 import 'chat_screen.dart';
 
 /// Lists posts created by the current user (status, open chat, etc.).
-class MyPostsScreen extends StatelessWidget {
-  const MyPostsScreen({super.key});
+class MyPostsScreen extends StatefulWidget {
+  const MyPostsScreen({super.key, this.onNavigateToCreatePost});
 
+  final VoidCallback? onNavigateToCreatePost;
+
+  @override
+  State<MyPostsScreen> createState() => _MyPostsScreenState();
+}
+
+class _MyPostsScreenState extends State<MyPostsScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -39,15 +49,38 @@ class MyPostsScreen extends StatelessWidget {
             return const LoadingView(message: 'Loading...');
           }
           final docs = snapshot.data!.docs;
+          final prefs = context.read<PreferencesService>();
+          final showTip = !prefs.hasSeenMyPostsTip;
+
           if (docs.isEmpty) {
-            return const EmptyStateView(
+            final emptyContent = EmptyStateView(
               icon: Icons.post_add,
               title: 'No posts yet',
-              subtitle: 'Posts you create will appear here.',
+              subtitle:
+                  'Posts you create will appear here. They show as "Your post" on the feed.',
+              primaryActionLabel:
+                  widget.onNavigateToCreatePost != null ? 'Create your first post' : null,
+              onPrimaryAction: widget.onNavigateToCreatePost,
             );
+            if (showTip) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FirstTimeTipBanner(
+                    message: 'Your posts show as "Your post" on the feed so you can spot them easily.',
+                    onDismiss: () {
+                      prefs.hasSeenMyPostsTip = true;
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                  Expanded(child: emptyContent),
+                ],
+              );
+            }
+            return emptyContent;
           }
 
-          return ListView.builder(
+          Widget listContent = ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: docs.length,
             itemBuilder: (context, i) {
@@ -55,11 +88,27 @@ class MyPostsScreen extends StatelessWidget {
               return _MyPostTile(
                 post: post,
                 postId: docs[i].id,
-                subtitle: _statusText(post),
-                trailing: _statusIcon(post),
+                subtitle: MyPostsScreen._statusText(post),
+                trailing: MyPostsScreen._statusIcon(post),
               );
             },
           );
+          if (showTip) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FirstTimeTipBanner(
+                  message: 'Your posts show as "Your post" on the feed so you can spot them easily.',
+                  onDismiss: () {
+                    prefs.hasSeenMyPostsTip = true;
+                    if (mounted) setState(() {});
+                  },
+                ),
+                Expanded(child: listContent),
+              ],
+            );
+          }
+          return listContent;
         },
       ),
     );
