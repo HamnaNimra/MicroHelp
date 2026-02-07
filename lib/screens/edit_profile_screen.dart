@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/location_autocomplete_field.dart';
 import '../widgets/profile_avatar.dart';
 import 'landing_screen.dart';
 
@@ -513,12 +514,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 16),
 
               // Neighborhood
-              TextFormField(
+              LocationAutocompleteField(
                 controller: _neighborhoodCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Neighborhood or postal code',
-                  border: OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 16),
 
@@ -632,6 +629,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LinkedAccountTile extends StatelessWidget {
+  const _LinkedAccountTile({
+    required this.providerName,
+    required this.providerId,
+    required this.icon,
+    required this.onLink,
+    required this.onUnlink,
+  });
+
+  final String providerName;
+  final String providerId;
+  final IconData icon;
+  final VoidCallback onLink;
+  final VoidCallback onUnlink;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthService>();
+    final linked = auth.getLinkedProviders().contains(providerId);
+
+    return ListTile(
+      leading: Icon(icon, size: 28),
+      title: Text(providerName),
+      subtitle: Text(linked ? 'Connected' : 'Not connected'),
+      contentPadding: EdgeInsets.zero,
+      trailing: linked
+          ? TextButton(
+              onPressed: onUnlink,
+              child: const Text('Unlink'),
+            )
+          : OutlinedButton(
+              onPressed: onLink,
+              child: const Text('Link'),
+            ),
     );
   }
 }
