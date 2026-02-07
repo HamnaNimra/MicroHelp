@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import 'landing_screen.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,6 +23,15 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigate() async {
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
+
+    final prefs = context.read<PreferencesService>();
+    if (!prefs.hasCompletedOnboarding) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+      return;
+    }
+
     final auth = context.read<AuthService>();
     if (auth.currentUser != null) {
       Navigator.of(context).pushReplacement(
