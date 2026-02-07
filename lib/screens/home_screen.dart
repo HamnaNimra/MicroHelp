@@ -14,19 +14,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
 
-  static const _tabs = [
-    FeedScreen(),
-    PostHelpScreen(),
-    InboxScreen(),
-    ProfileScreen(),
-  ];
+  void _goToPostTab() => setState(() => _index = 1);
+  void _goToFeedTab() => setState(() => _index = 0);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: _tabs,
+        children: [
+          FeedScreen(onNavigateToCreatePost: _goToPostTab),
+          PostHelpScreen(),
+          InboxScreen(
+            onNavigateToCreatePost: _goToPostTab,
+            onBrowseFeed: _goToFeedTab,
+          ),
+          ProfileScreen(onNavigateToCreatePost: _goToPostTab),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

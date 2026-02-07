@@ -88,8 +88,8 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
               return _MyPostTile(
                 post: post,
                 postId: docs[i].id,
-                subtitle: MyPostsScreen._statusText(post),
-                trailing: MyPostsScreen._statusIcon(post),
+                subtitle: _statusText(post),
+                trailing: _statusIcon(post),
               );
             },
           );
