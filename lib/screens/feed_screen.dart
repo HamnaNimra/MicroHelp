@@ -232,6 +232,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   );
                 }
 
+                final uid = FirebaseAuth.instance.currentUser?.uid;
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: filtered.length,
@@ -240,6 +241,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     return PostCard(
                       post: item.post,
                       distanceKm: item.distance,
+                      isOwn: item.post.userId == uid,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) =>
