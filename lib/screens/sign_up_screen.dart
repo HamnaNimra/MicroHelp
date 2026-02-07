@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import '../widgets/password_strength_meter.dart';
 import 'auth_screen.dart';
+import 'complete_profile_screen.dart';
 import 'home_screen.dart';
 
 const _genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Other'];
@@ -507,20 +508,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
+  Future<void> _socialSignIn(Future<UserCredential?> Function() signIn, String method) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final auth = context.read<AuthService>();
-      final cred = await auth.signInWithGoogle();
+      final cred = await signIn();
       if (cred?.user != null) {
-        await auth.getOrCreateUser(cred!.user!);
+        final user = await auth.getOrCreateUser(cred!.user!);
+        if (!mounted) return;
         final analytics = context.read<AnalyticsService>();
-        analytics.logLogin(method: 'google');
+        analytics.logSignUp(method: method);
         analytics.setUserProperties(userId: cred.user!.uid);
-        if (mounted) {
+
+        // If profile is incomplete (social sign-up), send to profile completion
+        if (user != null && !auth.isProfileComplete(user)) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => CompleteProfileScreen(
+                uid: cred.user!.uid,
+                prefillName: cred.user!.displayName,
+              ),
+            ),
+            (r) => false,
+          );
+        } else {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
             (r) => false,
@@ -534,30 +548,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _signInWithApple() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final auth = context.read<AuthService>();
-      final cred = await auth.signInWithApple();
-      if (cred?.user != null) {
-        await auth.getOrCreateUser(cred!.user!);
-        final analytics = context.read<AnalyticsService>();
-        analytics.logLogin(method: 'apple');
-        analytics.setUserProperties(userId: cred.user!.uid);
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (r) => false,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) setState(() => _error = _friendlyAuthError(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+  Future<void> _signInWithGoogle() =>
+      _socialSignIn(context.read<AuthService>().signInWithGoogle, 'google');
+
+  Future<void> _signInWithApple() =>
+      _socialSignIn(context.read<AuthService>().signInWithApple, 'apple');
 }
