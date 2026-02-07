@@ -21,10 +21,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _neighborhoodCtrl;
   late final TextEditingController _bioCtrl;
-  late final TextEditingController _genderOtherCtrl;
   final _formKey = GlobalKey<FormState>();
-  String? _gender;
-  String? _ageRange;
   bool _saving = false;
 
   @override
@@ -33,17 +30,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: widget.user.name);
     _neighborhoodCtrl = TextEditingController(text: widget.user.neighborhood);
     _bioCtrl = TextEditingController(text: widget.user.bio);
-    _ageRange = widget.user.ageRange;
-
-    // If the stored gender is not in the standard options, treat it as "Other"
-    if (widget.user.gender != null &&
-        !_genderOptions.contains(widget.user.gender)) {
-      _gender = 'Other';
-      _genderOtherCtrl = TextEditingController(text: widget.user.gender);
-    } else {
-      _gender = widget.user.gender;
-      _genderOtherCtrl = TextEditingController();
-    }
   }
 
   @override
@@ -51,7 +37,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _neighborhoodCtrl.dispose();
     _bioCtrl.dispose();
-    _genderOtherCtrl.dispose();
     super.dispose();
   }
 
