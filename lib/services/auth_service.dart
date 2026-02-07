@@ -45,6 +45,10 @@ class AuthService {
     return _auth.signInWithProvider(appleProvider);
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
   Future<void> signOut() async {
     try {
       await _notificationService.deleteToken();
