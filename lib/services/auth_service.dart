@@ -108,6 +108,31 @@ class AuthService {
     return userModel;
   }
 
+  /// Returns true if this user doc has the required community fields filled in.
+  bool isProfileComplete(UserModel user) {
+    return user.birthday != null && user.gender != null;
+  }
+
+  /// Updates an existing user's profile fields in Firestore.
+  Future<void> updateUserProfile(
+    String uid, {
+    required String name,
+    required DateTime birthday,
+    required String gender,
+    String? neighborhood,
+    String? bio,
+  }) async {
+    final updates = <String, dynamic>{
+      'name': name,
+      'birthday': Timestamp.fromDate(birthday),
+      'gender': gender,
+      'ageRange': _computeAgeRange(birthday),
+    };
+    if (neighborhood != null) updates['neighborhood'] = neighborhood;
+    if (bio != null) updates['bio'] = bio;
+    await _firestore.collection('users').doc(uid).update(updates);
+  }
+
   String _computeAgeRange(DateTime birthday) {
     final now = DateTime.now();
     int age = now.year - birthday.year;
