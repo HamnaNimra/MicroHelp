@@ -66,6 +66,15 @@ class AuthService {
     // Save FCM token for new user
     await _notificationService.saveToken(firebaseUser.uid);
 
+    // Award Founding Neighbor badge to all beta users
+    final badge = availableBadges[0]; // founding_neighbor
+    await ref.collection('badges').doc(badge.id).set({
+      'name': badge.name,
+      'description': badge.description,
+      'iconName': badge.iconName,
+      'earnedAt': Timestamp.fromDate(DateTime.now()),
+    });
+
     return userModel;
   }
 }
