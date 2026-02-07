@@ -133,6 +133,43 @@ class AuthService {
     await _firestore.collection('users').doc(uid).update(updates);
   }
 
+  /// Re-authenticates the user with their password, deletes Firestore data,
+  /// then deletes the Firebase Auth account.
+  Future<void> deleteAccount(String password) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+
+    // Re-authenticate to prove identity
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+
+    final uid = user.uid;
+
+    // Delete FCM token
+    try {
+      await _notificationService.deleteToken();
+    } catch (_) {}
+
+    // Delete badges sub-collection
+    final badgesSnap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('badges')
+        .get();
+    for (final doc in badgesSnap.docs) {
+      await doc.reference.delete();
+    }
+
+    // Delete user document
+    await _firestore.collection('users').doc(uid).delete();
+
+    // Delete Firebase Auth account
+    await user.delete();
+  }
+
   String _computeAgeRange(DateTime birthday) {
     final now = DateTime.now();
     int age = now.year - birthday.year;
