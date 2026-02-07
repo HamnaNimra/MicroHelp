@@ -28,6 +28,14 @@ class FirestoreService {
     return _posts.doc(postId).get();
   }
 
+  Future<void> updatePost(String postId, Map<String, dynamic> updates) async {
+    await _posts.doc(postId).update(updates);
+  }
+
+  Future<void> deletePost(String postId) async {
+    await _posts.doc(postId).delete();
+  }
+
   Future<void> acceptPost(String postId, String userId) async {
     await _posts.doc(postId).update({'acceptedBy': userId});
   }
