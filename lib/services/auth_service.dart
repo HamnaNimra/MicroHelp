@@ -101,4 +101,18 @@ class AuthService {
 
     return userModel;
   }
+
+  String _computeAgeRange(DateTime birthday) {
+    final now = DateTime.now();
+    int age = now.year - birthday.year;
+    if (now.month < birthday.month ||
+        (now.month == birthday.month && now.day < birthday.day)) {
+      age--;
+    }
+    if (age <= 25) return '18-25';
+    if (age <= 35) return '26-35';
+    if (age <= 45) return '36-45';
+    if (age <= 60) return '46-60';
+    return '60+';
+  }
 }
