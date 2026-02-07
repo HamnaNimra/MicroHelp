@@ -75,13 +75,45 @@ class PostDetailScreen extends StatelessWidget {
                   FilledButton(
                     onPressed: () async {
                       if (uid == null) return;
-                      await firestore.acceptPost(postId, uid);
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => ChatScreen(postId: postId),
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Accept this task?'),
+                          content: const Text(
+                            'You\'re committing to help. The poster will be notified immediately.',
                           ),
-                        );
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Accept'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true) return;
+                      if (!context.mounted) return;
+                      try {
+                        await firestore.acceptPost(postId, uid);
+                        if (context.mounted) {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) => ChatScreen(postId: postId),
+                            ),
+                          );
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to accept. Check your connection and try again.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       }
                     },
                     child: const Text('Accept'),
