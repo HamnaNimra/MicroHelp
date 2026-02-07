@@ -86,18 +86,28 @@ class TaskCompletionScreen extends StatelessWidget {
                             if (!context.mounted) return;
                             try {
                               await firestore.completePost(postId, uid);
+                              // Check for new badges after completion
+                              List<BadgeDefinition> newBadges = [];
+                              if (isHelper) {
+                                newBadges = await firestore.checkAndAwardBadges(uid);
+                              }
                               if (context.mounted) {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      isHelper
-                                          ? 'Task completed! You earned +1 trust score.'
-                                          : 'Task marked complete!',
+                                if (newBadges.isNotEmpty) {
+                                  await _showBadgeEarnedDialog(context, newBadges);
+                                }
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        isHelper
+                                            ? 'Task completed! You earned +1 trust score.'
+                                            : 'Task marked complete!',
+                                      ),
+                                      backgroundColor: Colors.green,
                                     ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
+                                  );
+                                }
                               }
                             } catch (_) {
                               if (context.mounted) {
