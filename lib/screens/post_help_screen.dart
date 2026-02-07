@@ -20,7 +20,6 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
   PostType _type = PostType.request;
-  bool _global = false;
   bool _anonymous = false;
   double _radiusKm = 5;
   int? _estimatedMinutes;
