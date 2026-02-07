@@ -63,6 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '937337910956',
     projectId: 'microhelp-hnm',
     storageBucket: 'microhelp-hnm.firebasestorage.app',
+    iosClientId: '937337910956-crsaakknmpf9dappi8ev893b0c9jbrp4.apps.googleusercontent.com',
     iosBundleId: 'com.microhelp.microHelp',
   );
 
@@ -72,6 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '937337910956',
     projectId: 'microhelp-hnm',
     storageBucket: 'microhelp-hnm.firebasestorage.app',
+    iosClientId: '937337910956-crsaakknmpf9dappi8ev893b0c9jbrp4.apps.googleusercontent.com',
     iosBundleId: 'com.microhelp.microHelp',
   );
 

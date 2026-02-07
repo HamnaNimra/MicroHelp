@@ -12,7 +12,12 @@
           "package_name": "com.microhelp.micro_help"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "937337910956-3p79igodfuc97c76m17j9bqj9t743m6i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCKcGe6bwYjzLKsFdPRPNFHpKfOJ5eFFwU"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "937337910956-3p79igodfuc97c76m17j9bqj9t743m6i.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "937337910956-crsaakknmpf9dappi8ev893b0c9jbrp4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.microhelp.microHelp"
+              }
+            }
+          ]
         }
       }
     }
