@@ -44,36 +44,83 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
     if (!_formKey.currentState!.validate()) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+    if (_submitting) return;
 
-    GeoPoint? location;
-    if (!_global) {
-      location = await _getLocation();
-      if (location == null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location needed for local posts')),
-        );
-        return;
+    setState(() => _submitting = true);
+
+    try {
+      GeoPoint? location;
+      if (!_global) {
+        location = await _getLocation();
+        if (location == null && mounted) {
+          // Offer to post globally instead
+          final postGlobal = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Location unavailable'),
+              content: const Text(
+                'We need your location to show your post to nearby neighbors. '
+                'Would you like to post globally instead?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Post globally'),
+                ),
+              ],
+            ),
+          );
+          if (postGlobal != true) {
+            setState(() => _submitting = false);
+            return;
+          }
+          // Switch to global mode
+          _global = true;
+        }
       }
-    }
 
-    final post = PostModel(
-      type: _type,
-      description: _descController.text.trim(),
-      userId: uid,
-      location: location,
-      radius: _radiusKm,
-      global: _global,
-      expiresAt: _expiresAt,
-      anonymous: _anonymous,
-      estimatedMinutes: _estimatedMinutes,
-    );
-
-    await context.read<FirestoreService>().createPost(post);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post created')),
+      final post = PostModel(
+        type: _type,
+        description: _descController.text.trim(),
+        userId: uid,
+        location: location,
+        radius: _radiusKm,
+        global: _global,
+        expiresAt: _expiresAt,
+        anonymous: _anonymous,
+        estimatedMinutes: _estimatedMinutes,
       );
-      _descController.clear();
+
+      await context.read<FirestoreService>().createPost(post);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _type == PostType.request
+                  ? 'Request published! Nearby neighbors will see it.'
+                  : 'Offer published! Neighbors who need help will see it.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _descController.clear();
+        setState(() => _global = false);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to create post. Check your connection and try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -186,8 +233,14 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _submit,
-                child: const Text('Post'),
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Post'),
               ),
             ],
           ),
