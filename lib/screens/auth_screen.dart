@@ -61,6 +61,20 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
+                if (_isSignUp) ...[
+                  TextFormField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Display name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_outlined),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
