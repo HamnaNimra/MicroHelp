@@ -50,6 +50,24 @@ firebase deploy --only firestore
 flutter run
 ```
 
+## Staying on the free plan (Spark)
+
+The app works on **Firebase Spark (free)**. You do **not** deploy Cloud Functions:
+
+- **Firestore** – Deploy rules and indexes only:
+  ```bash
+  firebase deploy --only firestore
+  ```
+- **Trust score** – When the **helper** marks a task complete, the app updates their trust score in Firestore (client-side transaction). No Cloud Functions required.
+- **Cloud Functions** – Skip `firebase deploy --only functions`. If you later upgrade to Blaze, you can deploy `functions/` for server-side trust-score updates and notifications.
+
+### Next steps (free plan)
+
+1. **Deploy Firestore** – `firebase deploy --only firestore` (rules + indexes).
+2. **Run the app** – `flutter run` on a device or emulator.
+3. **Test flow** – Sign up → post a request/offer → accept → chat → mark complete (helper gets +1 trust score).
+4. **Optional** – Add Firebase Auth sign-in methods (Google/Apple) in the Firebase Console and configure OAuth credentials for your app.
+
 ## Project Structure
 
 ```
@@ -64,5 +82,4 @@ lib/
 ```
 
 ## License
-
-MIT
+No License 

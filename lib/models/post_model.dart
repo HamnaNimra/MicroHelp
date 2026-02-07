@@ -14,9 +14,10 @@ class PostModel {
   final String? acceptedBy;
   final bool completed;
   final bool anonymous;
+  final int? estimatedMinutes;
 
   const PostModel({
-    required this.id,
+    this.id = '',
     required this.type,
     required this.description,
     required this.userId,
@@ -27,6 +28,7 @@ class PostModel {
     this.acceptedBy,
     this.completed = false,
     this.anonymous = false,
+    this.estimatedMinutes,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
@@ -43,6 +45,7 @@ class PostModel {
       acceptedBy: data['acceptedBy'] as String?,
       completed: data['completed'] as bool? ?? false,
       anonymous: data['anonymous'] as bool? ?? false,
+      estimatedMinutes: data['estimatedMinutes'] as int?,
     );
   }
 
@@ -58,6 +61,7 @@ class PostModel {
       if (acceptedBy != null) 'acceptedBy': acceptedBy,
       'completed': completed,
       'anonymous': anonymous,
+      if (estimatedMinutes != null) 'estimatedMinutes': estimatedMinutes,
     };
   }
 }
