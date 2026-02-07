@@ -158,7 +158,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
           // Update _post so the AppBar actions can access it.
           if (_post == null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+            Future.microtask(() {
               if (mounted) setState(() => _post = post);
             });
           }
