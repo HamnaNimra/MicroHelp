@@ -8,11 +8,69 @@ import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/post_type_chip.dart';
 import 'chat_screen.dart';
+import 'report_screen.dart';
 
-class PostDetailScreen extends StatelessWidget {
+class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.postId});
 
   final String postId;
+
+  @override
+  State<PostDetailScreen> createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  PostModel? _post;
+
+  Future<void> _blockUser(String postOwnerId) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Block this user?'),
+        content: const Text(
+          'Blocked users can\'t contact you and their posts '
+          'won\'t appear in your feed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await context.read<FirestoreService>().blockUser(uid, postOwnerId);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User blocked.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to block user. Try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +78,48 @@ class PostDetailScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Post detail')),
+      appBar: AppBar(
+        title: const Text('Post detail'),
+        actions: [
+          if (_post != null && _post!.userId != uid)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'report') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ReportScreen(
+                        reportedUserId: _post!.userId,
+                        reportedPostId: widget.postId,
+                      ),
+                    ),
+                  );
+                } else if (value == 'block') {
+                  _blockUser(_post!.userId);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'report',
+                  child: ListTile(
+                    leading: Icon(Icons.flag, color: Colors.orange),
+                    title: Text('Report post'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'block',
+                  child: ListTile(
+                    leading: Icon(Icons.block, color: Colors.red),
+                    title: Text('Block user'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: firestore.getPost(postId),
+        future: firestore.getPost(widget.postId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const ErrorView(
@@ -37,6 +134,13 @@ class PostDetailScreen extends StatelessWidget {
             return const ErrorView(message: 'Post not found.');
           }
           final post = PostModel.fromFirestore(doc);
+
+          // Update _post so the AppBar actions can access it.
+          if (_post == null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _post = post);
+            });
+          }
 
           final isOwner = post.userId == uid;
           final isHelper = post.acceptedBy == uid;
@@ -97,11 +201,11 @@ class PostDetailScreen extends StatelessWidget {
                       if (confirmed != true) return;
                       if (!context.mounted) return;
                       try {
-                        await firestore.acceptPost(postId, uid);
+                        await firestore.acceptPost(widget.postId, uid);
                         if (context.mounted) {
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
-                              builder: (_) => ChatScreen(postId: postId),
+                              builder: (_) => ChatScreen(postId: widget.postId),
                             ),
                           );
                         }
@@ -123,7 +227,7 @@ class PostDetailScreen extends StatelessWidget {
                     FilledButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => ChatScreen(postId: postId),
+                          builder: (_) => ChatScreen(postId: widget.postId),
                         ),
                       ),
                       child: const Text('Open chat'),
