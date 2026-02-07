@@ -138,7 +138,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
-                value: _estimatedMinutes,
+                initialValue: _estimatedMinutes,
                 decoration: const InputDecoration(
                   labelText: 'Estimated time (optional)',
                   border: OutlineInputBorder(),
