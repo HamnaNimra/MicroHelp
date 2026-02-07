@@ -67,4 +67,52 @@ class FirestoreService {
   Future<void> sendMessage(String postId, MessageModel message) async {
     await _messages(postId).add(message.toFirestore());
   }
+
+  /// Checks trust score against badge thresholds and awards any new badges.
+  /// Returns the list of newly awarded badge definitions.
+  Future<List<BadgeDefinition>> checkAndAwardBadges(String userId) async {
+    final userRef = _firestore.collection('users').doc(userId);
+    final badgesRef = userRef.collection('badges');
+
+    final userSnap = await userRef.get();
+    final trustScore = (userSnap.data()?['trustScore'] as int?) ?? 0;
+
+    final existingBadges = await badgesRef.get();
+    final earnedIds = existingBadges.docs.map((d) => d.id).toSet();
+
+    final newBadges = badgesToAward(trustScore, earnedIds);
+    final now = DateTime.now();
+
+    for (final badge in newBadges) {
+      await badgesRef.doc(badge.id).set({
+        'name': badge.name,
+        'description': badge.description,
+        'iconName': badge.iconName,
+        'earnedAt': Timestamp.fromDate(now),
+      });
+    }
+
+    return newBadges;
+  }
+
+  /// Awards the Founding Neighbor badge if not already earned.
+  Future<bool> awardFoundingNeighborBadge(String userId) async {
+    final badgeRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('badges')
+        .doc('founding_neighbor');
+
+    final existing = await badgeRef.get();
+    if (existing.exists) return false;
+
+    final badge = availableBadges[0]; // founding_neighbor
+    await badgeRef.set({
+      'name': badge.name,
+      'description': badge.description,
+      'iconName': badge.iconName,
+      'earnedAt': Timestamp.fromDate(DateTime.now()),
+    });
+    return true;
+  }
 }
