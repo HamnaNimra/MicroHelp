@@ -4,34 +4,24 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import 'home_screen.dart';
+import 'sign_up_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.initialSignUp = true});
-
-  final bool initialSignUp;
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  late bool _isSignUp;
   bool _loading = false;
   String? _error;
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _isSignUp = widget.initialSignUp;
-  }
-
-  @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -40,9 +30,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isSignUp ? 'Sign Up' : 'Sign In'),
-      ),
+      appBar: AppBar(title: const Text('Sign In')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -56,25 +44,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: SelectableText(
                       _error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.error),
                     ),
                   ),
                 ],
                 const SizedBox(height: 24),
-                if (_isSignUp) ...[
-                  TextFormField(
-                    controller: _nameController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Display name',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person_outlined),
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
-                  ),
-                  const SizedBox(height: 16),
-                ],
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -100,14 +75,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: _loading ? null : _submitEmailPassword,
+                  onPressed: _loading ? null : _submitSignIn,
                   child: _loading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                      : const Text('Sign In'),
                 ),
                 const SizedBox(height: 16),
                 const Row(
@@ -138,13 +113,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () {
-                    setState(() => _isSignUp = !_isSignUp);
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => const SignUpScreen(),
+                      ),
+                    );
                   },
-                  child: Text(
-                    _isSignUp
-                        ? 'Already have an account? Sign In'
-                        : "Don't have an account? Sign Up",
-                  ),
+                  child: const Text("Don't have an account? Sign Up"),
                 ),
               ],
             ),
@@ -181,27 +156,17 @@ class _AuthScreenState extends State<AuthScreen> {
     return 'Something went wrong. Please try again.';
   }
 
-  Future<void> _submitEmailPassword() async {
+  Future<void> _submitSignIn() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
       final auth = context.read<AuthService>();
-      final cred = _isSignUp
-          ? await auth.signUpWithEmail(
-              _emailController.text.trim(), _passwordController.text)
-          : await auth.signInWithEmail(
-              _emailController.text.trim(), _passwordController.text);
+      final cred = await auth.signInWithEmail(
+          _emailController.text.trim(), _passwordController.text);
       if (cred?.user != null) {
-        await auth.getOrCreateUser(
-          cred!.user!,
-          displayName: _isSignUp ? _nameController.text.trim() : null,
-        );
+        await auth.getOrCreateUser(cred!.user!);
         final analytics = context.read<AnalyticsService>();
-        if (_isSignUp) {
-          analytics.logSignUp(method: 'email');
-        } else {
-          analytics.logLogin(method: 'email');
-        }
+        analytics.logLogin(method: 'email');
         analytics.setUserProperties(userId: cred.user!.uid);
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
