@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 import '../services/notification_service.dart';
 
 class PostHelpScreen extends StatefulWidget {
@@ -125,6 +126,11 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       );
 
       await context.read<FirestoreService>().createPost(post);
+      context.read<AnalyticsService>().logPostCreated(
+        type: _type.name,
+        isGlobal: _global,
+        radius: _radiusKm,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
