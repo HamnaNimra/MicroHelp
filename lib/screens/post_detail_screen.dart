@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/post_type_chip.dart';
@@ -202,6 +203,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       if (!context.mounted) return;
                       try {
                         await firestore.acceptPost(widget.postId, uid);
+                        context.read<AnalyticsService>().logPostAccepted();
                         if (context.mounted) {
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
