@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'feed_screen.dart';
+import 'inbox_screen.dart';
 import 'post_help_screen.dart';
 import 'profile_screen.dart';
 
@@ -16,6 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _tabs = [
     FeedScreen(),
     PostHelpScreen(),
+    InboxScreen(),
     ProfileScreen(),
   ];
 
@@ -39,6 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.add_circle_outline),
             selectedIcon: Icon(Icons.add_circle),
             label: 'Post',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.inbox_outlined),
+            selectedIcon: Icon(Icons.inbox),
+            label: 'Inbox',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
