@@ -23,7 +23,7 @@ dependencies:
   # Location & maps
   geolocator: ^14.0.2
   flutter_map: ^7.0.2
-  latlong2: ^0.10.1
+  latlong2: ^0.9.1
   # State management
   provider: ^6.1.2
   shared_preferences: ^2.5.4
