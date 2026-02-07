@@ -8,6 +8,7 @@ import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/post_type_chip.dart';
+import '../widgets/post_location_map.dart';
 import 'chat_screen.dart';
 import 'report_screen.dart';
 
@@ -175,6 +176,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       : 'User: ${post.userId.substring(0, 8)}...',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (post.location != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Location',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  PostLocationMap(
+                    location: post.location!,
+                    radiusKm: post.radius,
+                    isGlobal: post.global,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    post.global
+                        ? 'Global post (visible everywhere)'
+                        : 'Visible within ${post.radius.toStringAsFixed(0)} km',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 const SizedBox(height: 24),
                 if (canAccept)
                   FilledButton(
