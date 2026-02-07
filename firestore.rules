@@ -43,5 +43,16 @@ service cloud.firestore {
       // Only admins can update status (done manually via Firebase Console for MVP)
       allow update, delete: if false;
     }
+
+    match /reports/{reportId} {
+      // Any authenticated user can create a report with their own ID as reporter
+      allow create: if request.auth != null
+        && request.resource.data.reporterId == request.auth.uid;
+      // Users can read their own reports
+      allow read: if request.auth != null
+        && resource.data.reporterId == request.auth.uid;
+      // Only admins can update/delete reports (via Firebase Console for MVP)
+      allow update, delete: if false;
+    }
   }
 }
