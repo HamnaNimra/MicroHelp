@@ -25,7 +25,6 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
   // QR code session state
   String? _qrSessionId;
   StreamSubscription<DocumentSnapshot>? _qrPollSub;
-  Timer? _qrExpiryTimer;
   Duration _qrTimeRemaining = Duration.zero;
   Timer? _countdownTimer;
 
@@ -38,7 +37,6 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
   @override
   void dispose() {
     _qrPollSub?.cancel();
-    _qrExpiryTimer?.cancel();
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -506,7 +504,7 @@ class _QrSessionCard extends StatelessWidget {
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '${minutes}:${seconds}';
+    return '$minutes:$seconds';
   }
 
   @override
