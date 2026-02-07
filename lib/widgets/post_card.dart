@@ -7,11 +7,13 @@ class PostCard extends StatelessWidget {
     required this.post,
     this.distanceKm,
     this.onTap,
+    this.isOwn = false,
   });
 
   final PostModel post;
   final double? distanceKm;
   final VoidCallback? onTap;
+  final bool isOwn;
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +30,17 @@ class PostCard extends StatelessWidget {
                     post.type == PostType.request ? Colors.orange : Colors.green,
               ),
             ),
-            if (post.global) ...[
+            if (isOwn) ...[
               const SizedBox(width: 8),
-              Icon(Icons.public,
-                  size: 16, color: Theme.of(context).colorScheme.outline),
+              Icon(Icons.person,
+                  size: 16, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 2),
+              Text(
+                'Your post',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
             ],
           ],
         ),
