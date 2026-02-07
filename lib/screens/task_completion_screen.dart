@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../constants/badges.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 
@@ -112,12 +113,17 @@ class TaskCompletionScreen extends StatelessWidget {
                             if (!context.mounted) return;
                             try {
                               await firestore.completePost(postId, uid);
+                              context.read<AnalyticsService>().logTaskCompleted();
                               // Check for new badges after completion
                               List<BadgeDefinition> newBadges = [];
                               if (isHelper) {
                                 newBadges = await firestore.checkAndAwardBadges(uid);
                               }
                               if (context.mounted) {
+                                final analytics = context.read<AnalyticsService>();
+                                for (final badge in newBadges) {
+                                  analytics.logBadgeEarned(badgeId: badge.id);
+                                }
                                 if (newBadges.isNotEmpty) {
                                   await _showBadgeEarnedDialog(context, newBadges);
                                 }
