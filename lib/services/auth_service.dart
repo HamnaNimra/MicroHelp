@@ -49,6 +49,44 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
+  /// Links a Google account to the current user.
+  Future<void> linkWithGoogle() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+    final googleProvider = GoogleAuthProvider();
+    if (kIsWeb) {
+      await user.linkWithPopup(googleProvider);
+    } else {
+      await user.linkWithProvider(googleProvider);
+    }
+  }
+
+  /// Links an Apple account to the current user.
+  Future<void> linkWithApple() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+    final appleProvider = AppleAuthProvider();
+    if (kIsWeb) {
+      await user.linkWithPopup(appleProvider);
+    } else {
+      await user.linkWithProvider(appleProvider);
+    }
+  }
+
+  /// Unlinks a provider from the current user.
+  Future<void> unlinkProvider(String providerId) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+    await user.unlink(providerId);
+  }
+
+  /// Returns the list of linked provider IDs for the current user.
+  List<String> getLinkedProviders() {
+    final user = _auth.currentUser;
+    if (user == null) return [];
+    return user.providerData.map((p) => p.providerId).toList();
+  }
+
   Future<void> signOut() async {
     try {
       await _notificationService.deleteToken();
