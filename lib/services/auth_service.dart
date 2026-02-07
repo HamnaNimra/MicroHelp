@@ -133,6 +133,18 @@ class AuthService {
     await _firestore.collection('users').doc(uid).update(updates);
   }
 
+  /// Returns the primary sign-in provider for the current user.
+  /// Returns 'google.com', 'apple.com', 'password', or null.
+  String? getSignInProvider() {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    for (final info in user.providerData) {
+      if (info.providerId == 'google.com') return 'google.com';
+      if (info.providerId == 'apple.com') return 'apple.com';
+    }
+    return 'password';
+  }
+
   /// Re-authenticates the user with their password, deletes Firestore data,
   /// then deletes the Firebase Auth account.
   Future<void> deleteAccount(String password) async {
@@ -146,6 +158,37 @@ class AuthService {
     );
     await user.reauthenticateWithCredential(credential);
 
+    await _deleteUserData(user);
+  }
+
+  /// Re-authenticates via Google or Apple provider, then deletes account.
+  Future<void> deleteAccountWithProvider() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('No signed-in user');
+
+    final provider = getSignInProvider();
+    if (provider == 'google.com') {
+      final googleProvider = GoogleAuthProvider();
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(googleProvider);
+      } else {
+        await user.reauthenticateWithProvider(googleProvider);
+      }
+    } else if (provider == 'apple.com') {
+      final appleProvider = AppleAuthProvider();
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(appleProvider);
+      } else {
+        await user.reauthenticateWithProvider(appleProvider);
+      }
+    } else {
+      throw StateError('Use deleteAccount(password) for email/password users');
+    }
+
+    await _deleteUserData(user);
+  }
+
+  Future<void> _deleteUserData(User user) async {
     final uid = user.uid;
 
     // Delete FCM token
