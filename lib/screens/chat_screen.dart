@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/message_model.dart';
 import '../services/firestore_service.dart';
+import '../widgets/error_view.dart';
+import '../widgets/empty_state_view.dart';
+import '../widgets/loading_view.dart';
 import 'task_completion_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -73,8 +76,13 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder(
               stream: firestore.getMessages(widget.postId),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const ErrorView(
+                    message: 'Could not load messages. Check your connection.',
+                  );
+                }
                 if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const LoadingView(message: 'Loading messages...');
                 }
                 final docs = snapshot.data!.docs;
                 final messages = docs
@@ -82,8 +90,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     .toList();
 
                 if (messages.isEmpty) {
-                  return const Center(
-                    child: Text('No messages yet. Say hello!'),
+                  return const EmptyStateView(
+                    icon: Icons.chat_bubble_outline,
+                    title: 'No messages yet',
+                    subtitle: 'Say hello!',
                   );
                 }
 

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+import '../widgets/error_view.dart';
+import '../widgets/loading_view.dart';
 import 'landing_screen.dart';
 import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
@@ -42,12 +44,17 @@ class ProfileScreen extends StatelessWidget {
             .doc(uid)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const ErrorView(
+              message: 'Could not load profile. Check your connection.',
+            );
+          }
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingView(message: 'Loading profile...');
           }
           final doc = snapshot.data!;
           if (doc.data() == null) {
-            return const Center(child: Text('Profile not found'));
+            return const ErrorView(message: 'Profile not found.');
           }
           final user = UserModel.fromFirestore(doc);
 

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/post_model.dart';
 import '../services/firestore_service.dart';
+import '../widgets/error_view.dart';
+import '../widgets/empty_state_view.dart';
+import '../widgets/loading_view.dart';
 import 'post_detail_screen.dart';
 
 class FeedScreen extends StatelessWidget {
@@ -17,15 +20,20 @@ class FeedScreen extends StatelessWidget {
         stream: firestore.getActivePosts(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingView(message: 'Loading posts...');
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return ErrorView(
+              message: 'Could not load posts. Check your connection and try again.',
+              onRetry: () => (context as Element).markNeedsBuild(),
+            );
           }
           final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
-            return const Center(
-              child: Text('No active posts. Be the first to post!'),
+            return const EmptyStateView(
+              icon: Icons.post_add,
+              title: 'No active posts',
+              subtitle: 'Be the first to post! Tap the Post tab below.',
             );
           }
 

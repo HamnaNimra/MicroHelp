@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../services/firestore_service.dart';
+import '../widgets/error_view.dart';
+import '../widgets/loading_view.dart';
 
 class TaskCompletionScreen extends StatelessWidget {
   const TaskCompletionScreen({super.key, required this.postId});
@@ -20,12 +22,17 @@ class TaskCompletionScreen extends StatelessWidget {
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         future: firestore.getPost(postId),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const ErrorView(
+              message: 'Could not load task. Check your connection.',
+            );
+          }
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingView(message: 'Loading task...');
           }
           final doc = snapshot.data!;
           if (!doc.exists || doc.data() == null) {
-            return const Center(child: Text('Post not found'));
+            return const ErrorView(message: 'Post not found.');
           }
           final post = PostModel.fromFirestore(doc);
 

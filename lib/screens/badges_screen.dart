@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/error_view.dart';
+import '../widgets/loading_view.dart';
 
 class BadgesScreen extends StatelessWidget {
   const BadgesScreen({super.key, required this.userId});
@@ -16,8 +18,13 @@ class BadgesScreen extends StatelessWidget {
             .doc(userId)
             .snapshots(),
         builder: (context, userSnapshot) {
+          if (userSnapshot.hasError) {
+            return const ErrorView(
+              message: 'Could not load badges. Check your connection.',
+            );
+          }
           if (!userSnapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingView(message: 'Loading badges...');
           }
           final trustScore =
               (userSnapshot.data!.data()?['trustScore'] as int?) ?? 0;
