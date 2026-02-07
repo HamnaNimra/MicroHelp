@@ -46,7 +46,14 @@ class AuthService {
     await _auth.signOut();
   }
 
-  Future<UserModel?> getOrCreateUser(User firebaseUser, {String? displayName}) async {
+  Future<UserModel?> getOrCreateUser(
+    User firebaseUser, {
+    String? displayName,
+    DateTime? birthday,
+    String? gender,
+    String? neighborhood,
+    String? bio,
+  }) async {
     final ref = _firestore.collection('users').doc(firebaseUser.uid);
     final doc = await ref.get();
 
@@ -67,6 +74,11 @@ class AuthService {
       name: name,
       profilePic: firebaseUser.photoURL,
       createdAt: now,
+      birthday: birthday,
+      gender: gender,
+      ageRange: birthday != null ? _computeAgeRange(birthday) : null,
+      neighborhood: neighborhood,
+      bio: bio,
     );
     await ref.set(userModel.toFirestore());
 
