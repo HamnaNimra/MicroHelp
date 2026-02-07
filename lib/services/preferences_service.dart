@@ -7,6 +7,7 @@ class PreferencesService {
   static const _keySeenFeedTip = 'tips_seen_feed';
   static const _keySeenInboxTip = 'tips_seen_inbox';
   static const _keySeenMyPostsTip = 'tips_seen_my_posts';
+  static const _keyThemeSetting = 'theme_setting';
 
   late final SharedPreferences _prefs;
 
@@ -33,4 +34,7 @@ class PreferencesService {
 
   bool get hasSeenMyPostsTip => _prefs.getBool(_keySeenMyPostsTip) ?? false;
   set hasSeenMyPostsTip(bool v) => _prefs.setBool(_keySeenMyPostsTip, v);
+
+  String get themeSetting => _prefs.getString(_keyThemeSetting) ?? 'system';
+  set themeSetting(String v) => _prefs.setString(_keyThemeSetting, v);
 }
