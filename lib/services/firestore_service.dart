@@ -36,8 +36,23 @@ class FirestoreService {
     await _posts.doc(postId).delete();
   }
 
+  /// Accept a post (set acceptedBy to current user). Fails if post is missing,
+  /// already accepted, or completed. Use a read-then-write to avoid races.
   Future<void> acceptPost(String postId, String userId) async {
-    await _posts.doc(postId).update({'acceptedBy': userId});
+    final ref = _posts.doc(postId);
+    final snap = await ref.get();
+    if (!snap.exists || snap.data() == null) {
+      throw AcceptPostException('Post no longer exists.');
+    }
+    final data = snap.data()!;
+    if (data['completed'] == true) {
+      throw AcceptPostException('This task is already completed.');
+    }
+    final existing = data['acceptedBy'] as String?;
+    if (existing != null) {
+      throw AcceptPostException('Someone else already accepted this post.');
+    }
+    await ref.update({'acceptedBy': userId});
   }
 
   /// Completes the post. If [currentUserId] is the helper (acceptedBy),
@@ -151,4 +166,12 @@ class FirestoreService {
     final doc = await _firestore.collection('users').doc(userId).get();
     return List<String>.from(doc.data()?['blockedUsers'] as List? ?? []);
   }
+}
+
+/// Thrown when acceptPost fails due to post state (already accepted, completed, or missing).
+class AcceptPostException implements Exception {
+  final String message;
+  AcceptPostException(this.message);
+  @override
+  String toString() => message;
 }
