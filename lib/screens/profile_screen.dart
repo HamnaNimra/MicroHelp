@@ -29,6 +29,24 @@ class ProfileScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Sign out?'),
+                  content: const Text('You\'ll need to sign in again to use MicroHelp.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sign out'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true) return;
               await auth.signOut();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
