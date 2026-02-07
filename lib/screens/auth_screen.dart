@@ -54,7 +54,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 if (_error != null) ...[
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(
+                    child: SelectableText(
                       _error!,
                       style: TextStyle(color: Theme.of(context).colorScheme.error),
                     ),

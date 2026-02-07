@@ -4,8 +4,8 @@
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "expiresAt", "order": "ASCENDING" },
-        { "fieldPath": "completed", "order": "ASCENDING" }
+        { "fieldPath": "completed", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
       ]
     }
   ],
