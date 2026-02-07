@@ -25,6 +25,7 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _locationLoading = true;
   late bool _showGlobal;
   late double _localRadiusKm;
+  Set<String> _blockedUsers = {};
 
   @override
   void initState() {
@@ -33,6 +34,17 @@ class _FeedScreenState extends State<FeedScreen> {
     _showGlobal = prefs.showGlobalPosts;
     _localRadiusKm = prefs.localRadiusKm;
     _loadUserLocation();
+    _loadBlockedUsers();
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final blocked =
+          await context.read<FirestoreService>().getBlockedUsers(uid);
+      if (mounted) setState(() => _blockedUsers = blocked.toSet());
+    } catch (_) {}
   }
 
   Future<void> _loadUserLocation() async {
@@ -77,6 +89,9 @@ class _FeedScreenState extends State<FeedScreen> {
     final results = <_PostWithDistance>[];
 
     for (final post in posts) {
+      // Skip posts from blocked users.
+      if (_blockedUsers.contains(post.userId)) continue;
+
       if (post.global) {
         // Global posts: show if toggle is on.
         if (_showGlobal) {
