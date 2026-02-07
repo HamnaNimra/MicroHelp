@@ -191,36 +191,16 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
     setState(() => _submitting = true);
 
     try {
-      GeoPoint? location;
-      if (!_global) {
-        location = _selectedLocation;
-        if (location == null && mounted) {
-          final postGlobal = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Location unavailable'),
-              content: const Text(
-                'We could not get your location. '
-                'Would you like to post globally instead?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Post globally'),
-                ),
-              ],
-            ),
-          );
-          if (postGlobal != true) {
-            setState(() => _submitting = false);
-            return;
-          }
-          _global = true;
-        }
+      final location = _selectedLocation;
+      if (location == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please set a location for your post using the map or search.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _submitting = false);
+        return;
       }
 
       final post = PostModel(
@@ -229,7 +209,7 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
         userId: uid,
         location: location,
         radius: _radiusKm,
-        global: _global,
+        global: false,
         expiresAt: _expiresAt,
         anonymous: _anonymous,
         estimatedMinutes: _estimatedMinutes,
@@ -239,22 +219,21 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       if (!mounted) return;
       context.read<AnalyticsService>().logPostCreated(
         type: _type.name,
-        isGlobal: _global,
+        isGlobal: false,
         radius: _radiusKm,
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             _type == PostType.request
-                ? 'Request published! Nearby neighbors will see it.'
-                : 'Offer published! Neighbors who need help will see it.',
+                ? 'Request published! Neighbors near that location will see it.'
+                : 'Offer published! Neighbors near that location will see it.',
           ),
           backgroundColor: Colors.green,
         ),
       );
       _descController.clear();
       setState(() {
-        _global = false;
         _selectedLocation = _gpsLocation;
       });
 
@@ -337,46 +316,39 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
                 onChanged: (v) => setState(() => _estimatedMinutes = v),
               ),
               const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Global (visible to everyone)'),
-                value: _global,
-                onChanged: (v) => setState(() => _global = v),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('Radius: ${_radiusKm.toStringAsFixed(0)} km'),
               ),
-              if (!_global) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text('Radius: ${_radiusKm.toStringAsFixed(0)} km'),
+              Slider(
+                value: _radiusKm,
+                min: 1,
+                max: 50,
+                divisions: 49,
+                label: '${_radiusKm.toStringAsFixed(0)} km',
+                onChanged: (v) => setState(() => _radiusKm = v),
+              ),
+              const SizedBox(height: 8),
+              // Map section
+              if (_loadingLocation)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_selectedLocation != null)
+                LocationPickerMap(
+                  initialLocation: _selectedLocation!,
+                  radiusKm: _radiusKm,
+                  onLocationChanged: _onLocationChanged,
+                  actualGpsLocation: _gpsLocation,
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _initLocation,
+                  icon: const Icon(Icons.map),
+                  label: const Text('Set location'),
                 ),
-                Slider(
-                  value: _radiusKm,
-                  min: 1,
-                  max: 50,
-                  divisions: 49,
-                  label: '${_radiusKm.toStringAsFixed(0)} km',
-                  onChanged: (v) => setState(() => _radiusKm = v),
-                ),
-                const SizedBox(height: 8),
-                // Map section
-                if (_loadingLocation)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_selectedLocation != null)
-                  LocationPickerMap(
-                    initialLocation: _selectedLocation!,
-                    radiusKm: _radiusKm,
-                    onLocationChanged: _onLocationChanged,
-                    actualGpsLocation: _gpsLocation,
-                  )
-                else
-                  OutlinedButton.icon(
-                    onPressed: _initLocation,
-                    icon: const Icon(Icons.map),
-                    label: const Text('Enable location'),
-                  ),
-                const SizedBox(height: 8),
-              ],
+              const SizedBox(height: 8),
               SwitchListTile(
                 title: const Text('Post anonymously'),
                 value: _anonymous,
