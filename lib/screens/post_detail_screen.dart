@@ -171,9 +171,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  post.anonymous
-                      ? 'Anonymous'
-                      : 'User: ${post.userId.substring(0, 8)}...',
+                  isOwner
+                      ? 'Your post${post.anonymous ? ' (anonymous to others)' : ''}'
+                      : post.anonymous
+                          ? 'Anonymous'
+                          : 'User: ${post.userId.substring(0, 8)}...',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 if (post.location != null) ...[
