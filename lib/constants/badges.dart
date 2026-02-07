@@ -34,6 +34,8 @@ class BadgeDefinition {
         return Icons.military_tech;
       case 'auto_awesome':
         return Icons.auto_awesome;
+      case 'verified_user':
+        return Icons.verified_user;
       default:
         return Icons.emoji_events;
     }
@@ -47,6 +49,13 @@ const availableBadges = <BadgeDefinition>[
     name: 'Founding Neighbor',
     description: 'Joined during the beta launch',
     iconName: 'auto_awesome',
+    isSpecial: true,
+  ),
+  BadgeDefinition(
+    id: 'verified',
+    name: 'Verified',
+    description: 'Identity verified by MicroHelp',
+    iconName: 'verified_user',
     isSpecial: true,
   ),
   BadgeDefinition(
