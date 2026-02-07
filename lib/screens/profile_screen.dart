@@ -10,6 +10,7 @@ import '../widgets/trust_score_badge.dart';
 import 'landing_screen.dart';
 import 'edit_profile_screen.dart';
 import 'badges_screen.dart';
+import 'onboarding_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -113,6 +114,16 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.emoji_events),
                   label: const Text('Badges & gamification'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const OnboardingScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('View tutorial'),
                 ),
               ],
             ),
