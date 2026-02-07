@@ -16,7 +16,9 @@ import 'verify_identity_screen.dart';
 import 'my_posts_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onNavigateToCreatePost});
+
+  final VoidCallback? onNavigateToCreatePost;
 
   void _showDeleteAccountDialog(BuildContext context) {
     final auth = context.read<AuthService>();
@@ -273,7 +275,14 @@ class ProfileScreen extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const MyPostsScreen(),
+                      builder: (_) => MyPostsScreen(
+                        onNavigateToCreatePost: onNavigateToCreatePost != null
+                            ? () {
+                                Navigator.of(context).pop();
+                                onNavigateToCreatePost!();
+                              }
+                            : null,
+                      ),
                     ),
                   ),
                   icon: const Icon(Icons.post_add),
