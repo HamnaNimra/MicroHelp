@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 
 class PostHelpScreen extends StatefulWidget {
   const PostHelpScreen({super.key});
@@ -109,6 +110,17 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
         );
         _descController.clear();
         setState(() => _global = false);
+
+        // Contextually request notification permission after first post
+        if (mounted) {
+          final notif = context.read<NotificationService>();
+          final granted =
+              await notif.requestPermissionWithRationale(context);
+          if (granted && mounted) {
+            final uid = FirebaseAuth.instance.currentUser?.uid;
+            if (uid != null) await notif.saveToken(uid);
+          }
+        }
       }
     } catch (_) {
       if (mounted) {
