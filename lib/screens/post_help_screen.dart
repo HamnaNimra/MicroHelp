@@ -22,6 +22,7 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   double _radiusKm = 5;
   int? _estimatedMinutes;
   DateTime _expiresAt = DateTime.now().add(const Duration(hours: 24));
+  bool _submitting = false;
 
   @override
   void dispose() {
