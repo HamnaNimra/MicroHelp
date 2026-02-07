@@ -192,7 +192,10 @@ class _AuthScreenState extends State<AuthScreen> {
           : await auth.signInWithEmail(
               _emailController.text.trim(), _passwordController.text);
       if (cred?.user != null) {
-        await auth.getOrCreateUser(cred!.user!);
+        await auth.getOrCreateUser(
+          cred!.user!,
+          displayName: _isSignUp ? _nameController.text.trim() : null,
+        );
         final analytics = context.read<AnalyticsService>();
         if (_isSignUp) {
           analytics.logSignUp(method: 'email');
