@@ -141,6 +141,22 @@ class ProfileScreen extends StatelessWidget {
                   label: const Text('Badges & gamification'),
                 ),
                 const SizedBox(height: 12),
+                if (!user.idVerified)
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const VerifyIdentityScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.verified_user),
+                    label: const Text('Verify identity'),
+                  )
+                else
+                  const Chip(
+                    avatar: Icon(Icons.verified, color: Colors.blue),
+                    label: Text('Identity verified'),
+                  ),
+                const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
