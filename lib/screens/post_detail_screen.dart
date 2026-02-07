@@ -10,6 +10,7 @@ import '../widgets/loading_view.dart';
 import '../widgets/post_type_chip.dart';
 import '../widgets/post_location_map.dart';
 import 'chat_screen.dart';
+import 'edit_post_screen.dart';
 import 'report_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
