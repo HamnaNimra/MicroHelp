@@ -32,10 +32,38 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   }
 
   Future<GeoPoint?> _getLocation() async {
-    final ok = await Geolocator.checkPermission();
-    if (ok == LocationPermission.denied) {
-      await Geolocator.requestPermission();
+    var permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      // Show rationale before the OS permission dialog
+      if (!mounted) return null;
+      final shouldRequest = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.location_on, size: 40),
+          title: const Text('Share your location'),
+          content: const Text(
+            'We need your location to show your post to nearby neighbors. '
+            'Only your approximate area is shared — never your exact address.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Allow location'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldRequest != true) return null;
+      permission = await Geolocator.requestPermission();
     }
+
+    if (permission == LocationPermission.deniedForever) return null;
     if (!await Geolocator.isLocationServiceEnabled()) return null;
     final pos = await Geolocator.getCurrentPosition();
     return GeoPoint(pos.latitude, pos.longitude);
