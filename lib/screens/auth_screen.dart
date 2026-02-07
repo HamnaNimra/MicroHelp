@@ -75,7 +75,14 @@ class _AuthScreenState extends State<AuthScreen> {
                   validator: (v) =>
                       (v == null || v.isEmpty) ? 'Enter your password' : null,
                 ),
-                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _loading ? null : _showForgotPasswordDialog,
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 FilledButton(
                   onPressed: _loading ? null : _submitSignIn,
                   child: _loading
@@ -175,6 +182,112 @@ class _AuthScreenState extends State<AuthScreen> {
         (r) => false,
       );
     }
+  }
+
+  void _showForgotPasswordDialog() {
+    final resetEmailCtrl = TextEditingController(text: _emailController.text);
+    bool sending = false;
+    String? message;
+    bool success = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Reset password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: resetEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                enabled: !sending && !success,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  errorText: message != null && !success ? message : null,
+                ),
+              ),
+              if (success && message != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  message!,
+                  style: TextStyle(color: Colors.green[700]),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(success ? 'Done' : 'Cancel'),
+            ),
+            if (!success)
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = resetEmailCtrl.text.trim();
+                        if (email.isEmpty) {
+                          setDialogState(() => message = 'Enter your email');
+                          return;
+                        }
+                        setDialogState(() {
+                          sending = true;
+                          message = null;
+                        });
+                        try {
+                          await context
+                              .read<AuthService>()
+                              .sendPasswordResetEmail(email);
+                          setDialogState(() {
+                            sending = false;
+                            success = true;
+                            message =
+                                'Password reset email sent! Check your inbox.';
+                          });
+                        } on FirebaseAuthException catch (e) {
+                          setDialogState(() {
+                            sending = false;
+                            switch (e.code) {
+                              case 'user-not-found':
+                                message =
+                                    'No account found with that email.';
+                              case 'invalid-email':
+                                message = 'That email address is not valid.';
+                              case 'too-many-requests':
+                                message =
+                                    'Too many attempts. Try again later.';
+                              default:
+                                message =
+                                    e.message ?? 'Failed to send reset email.';
+                            }
+                          });
+                        } catch (_) {
+                          setDialogState(() {
+                            sending = false;
+                            message = 'Something went wrong. Please try again.';
+                          });
+                        }
+                      },
+                child: sending
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Send reset link'),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submitSignIn() async {
