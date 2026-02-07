@@ -41,14 +41,26 @@ class _ChatScreenState extends State<ChatScreen> {
       text: text,
       timestamp: DateTime.now(),
     );
-    await context.read<FirestoreService>().sendMessage(widget.postId, message);
-    _textController.clear();
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
+    try {
+      await context.read<FirestoreService>().sendMessage(widget.postId, message);
+      _textController.clear();
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to send message.'),
+            action: SnackBarAction(label: 'Retry', onPressed: _send),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
