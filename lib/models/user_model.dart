@@ -59,6 +59,7 @@ class UserModel {
       if (ageRange != null) 'ageRange': ageRange,
       if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
       'idVerified': idVerified,
+      if (blockedUsers.isNotEmpty) 'blockedUsers': blockedUsers,
     };
   }
 
