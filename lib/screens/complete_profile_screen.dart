@@ -128,6 +128,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                       .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                       .toList(),
                   onChanged: (v) => setState(() => _gender = v),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Select your gender' : null,
                 ),
 
                 if (_gender == 'Other') ...[
