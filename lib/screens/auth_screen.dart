@@ -223,7 +223,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 12),
                 Text(
                   message!,
-                  style: TextStyle(color: Colors.green[700]),
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
                 ),
               ],
             ],
