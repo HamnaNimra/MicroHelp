@@ -4,7 +4,10 @@ import '../services/preferences_service.dart';
 import 'landing_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({super.key, this.isReplay = false});
+
+  /// When true, the user is re-watching from Profile — just pop back on finish.
+  final bool isReplay;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -51,9 +54,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _complete() {
     context.read<PreferencesService>().hasCompletedOnboarding = true;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LandingScreen()),
-    );
+    if (widget.isReplay) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+      );
+    }
   }
 
   @override
