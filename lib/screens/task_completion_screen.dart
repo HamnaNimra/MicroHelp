@@ -6,7 +6,7 @@ import '../models/post_model.dart';
 import '../constants/badges.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
-import '../theme/app_theme.dart';
+import '../widgets/badge_celebration.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 
@@ -19,26 +19,7 @@ class TaskCompletionScreen extends StatelessWidget {
     BuildContext context,
     List<BadgeDefinition> badges,
   ) {
-    return showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Badge earned!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: badges.map((b) => ListTile(
-            leading: Icon(b.icon, color: AppColors.badgeEarned(context), size: 32),
-            title: Text(b.name),
-            subtitle: Text(b.description),
-          )).toList(),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Awesome!'),
-          ),
-        ],
-      ),
-    );
+    return showBadgeCelebration(context, badges);
   }
 
   @override
