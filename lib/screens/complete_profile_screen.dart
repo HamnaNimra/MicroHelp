@@ -253,9 +253,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save. Check your connection and try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to save. Check your connection and try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
