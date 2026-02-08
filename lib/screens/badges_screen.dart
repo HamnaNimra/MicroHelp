@@ -4,6 +4,7 @@ import '../constants/badges.dart';
 import '../theme/app_theme.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
+import '../widgets/staggered_list_item.dart';
 import '../widgets/trust_score_badge.dart';
 
 class BadgesScreen extends StatelessWidget {
@@ -60,60 +61,65 @@ class BadgesScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),
-                    ...availableBadges.map((badge) {
-                      final earned = earnedIds.contains(badge.id);
-                      final data = earnedDocs[badge.id];
-                      final earnedAt = data != null
-                          ? (data['earnedAt'] as Timestamp?)?.toDate()
-                          : null;
+                    for (var i = 0; i < availableBadges.length; i++)
+                      () {
+                        final badge = availableBadges[i];
+                        final earned = earnedIds.contains(badge.id);
+                        final data = earnedDocs[badge.id];
+                        final earnedAt = data != null
+                            ? (data['earnedAt'] as Timestamp?)?.toDate()
+                            : null;
 
-                      // Progress hint for score-based badges
-                      String? progress;
-                      if (!earned && badge.trustScoreThreshold != null) {
-                        final remaining =
-                            badge.trustScoreThreshold! - trustScore;
-                        if (remaining > 0) {
-                          progress = 'Complete $remaining more task${remaining == 1 ? '' : 's'}';
+                        // Progress hint for score-based badges
+                        String? progress;
+                        if (!earned && badge.trustScoreThreshold != null) {
+                          final remaining =
+                              badge.trustScoreThreshold! - trustScore;
+                          if (remaining > 0) {
+                            progress = 'Complete $remaining more task${remaining == 1 ? '' : 's'}';
+                          }
                         }
-                      }
 
-                      return Card(
-                        color: earned ? null : Theme.of(context).colorScheme.surfaceContainerHighest,
-                        child: ListTile(
-                          leading: Icon(
-                            badge.icon,
-                            color: earned
-                                ? AppColors.badgeEarned(context)
-                                : AppColors.badgeUnearned(context),
-                            size: 32,
-                          ),
-                          title: Text(
-                            badge.name,
-                            style: TextStyle(
-                              color: earned ? null : Theme.of(context).colorScheme.outline,
-                              fontWeight:
-                                  earned ? FontWeight.bold : FontWeight.normal,
+                        return StaggeredListItem(
+                          index: i,
+                          child: Card(
+                            color: earned ? null : Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: ListTile(
+                              leading: Icon(
+                                badge.icon,
+                                color: earned
+                                    ? AppColors.badgeEarned(context)
+                                    : AppColors.badgeUnearned(context),
+                                size: 32,
+                              ),
+                              title: Text(
+                                badge.name,
+                                style: TextStyle(
+                                  color: earned ? null : Theme.of(context).colorScheme.outline,
+                                  fontWeight:
+                                      earned ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                              subtitle: Text(
+                                earned
+                                    ? badge.description +
+                                        (earnedAt != null
+                                            ? '\nEarned ${earnedAt.day}/${earnedAt.month}/${earnedAt.year}'
+                                            : '')
+                                    : progress ?? badge.description,
+                                style: TextStyle(
+                                  color: earned ? null : Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                              trailing: earned
+                                  ? Icon(Icons.check_circle,
+                                      color: Theme.of(context).colorScheme.primary)
+                                  : Icon(Icons.lock_outline,
+                                      color: Theme.of(context).colorScheme.outline),
                             ),
                           ),
-                          subtitle: Text(
-                            earned
-                                ? badge.description +
-                                    (earnedAt != null
-                                        ? '\nEarned ${earnedAt.day}/${earnedAt.month}/${earnedAt.year}'
-                                        : '')
-                                : progress ?? badge.description,
-                            style: TextStyle(
-                              color: earned ? null : Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                          trailing: earned
-                              ? Icon(Icons.check_circle,
-                                  color: Theme.of(context).colorScheme.primary)
-                              : Icon(Icons.lock_outline,
-                                  color: Theme.of(context).colorScheme.outline),
-                        ),
-                      );
-                    }),
+                        );
+                      }(),
                   ],
                 ),
               );
