@@ -556,7 +556,7 @@ class _QrSessionCard extends StatelessWidget {
                   'Expires in ${_formatDuration(timeRemaining)}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: timeRemaining.inMinutes < 5
-                        ? Colors.red
+                        ? theme.colorScheme.error
                         : theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
@@ -620,7 +620,7 @@ class _PhotoUploadCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: hasPhoto
-                      ? Colors.green.withValues(alpha: 0.1)
+                      ? theme.colorScheme.primary.withAlpha(26)
                       : theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                 ),
