@@ -15,26 +15,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Flutter
-      - name: Set up Flutter
+      # 2️⃣ Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3️⃣ Precache iOS artifacts
+      # 3️⃣ Cache Pub packages for faster builds
+      - name: Cache Pub packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            pub-cache-
+
+      # 4️⃣ Precache Flutter iOS artifacts
       - name: Precache Flutter iOS artifacts
         run: flutter precache --ios
 
-      # 4️⃣ Get Flutter packages
+      # 5️⃣ Get Flutter dependencies
       - name: Get Flutter packages
         run: flutter pub get
 
-      # 5️⃣ Ensure iOS folder exists
+      # 6️⃣ Ensure iOS folder exists
       - name: Ensure iOS folder
         run: flutter create .
 
-      # 6️⃣ Create minimal Podfile for CI
-      - name: Create minimal Podfile for iOS
+      # 7️⃣ Create Podfile with iOS 15 target to fix Firebase plugin errors
+      - name: Create Podfile for iOS
         run: |
           mkdir -p ios
           cat > ios/Podfile <<EOL
@@ -45,26 +54,19 @@ jobs:
           end
           EOL
 
-      # 7️⃣ Install CocoaPods dependencies
-      - name: Install CocoaPods
-        run: |
-          cd ios
-          pod install --repo-update
+      # 8️⃣ Build unsigned IPA (fixes cloud_firestore + other plugins)
+      - name: Build unsigned IPA
+        run: flutter build ipa --no-codesign
 
-      # 8️⃣ Build iOS release 
-      - name: Build iOS release
-        run: flutter build ios --no-codesign
-
-      # 9️⃣ Package IPA
+      # 9️⃣ Package IPA artifact
       - name: Package IPA
         run: |
           mkdir -p build/ipa
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r ../../ipa/app-${{ github.run_number }}.ipa Payload
+          cp -r build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app build/ipa/Runner.app
+          cd build/ipa
+          zip -r app-${{ github.run_number }}.ipa Runner.app
 
-      # 🔟 Upload IPA artifact
+      # 🔟 Upload IPA to GitHub artifacts
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
