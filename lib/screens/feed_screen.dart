@@ -254,14 +254,17 @@ class _FeedScreenState extends State<FeedScreen> {
                     itemCount: filtered.length,
                     itemBuilder: (context, i) {
                       final item = filtered[i];
-                      return PostCard(
-                        post: item.post,
-                        distanceKm: item.distance,
-                        isOwn: item.post.userId == uid,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                PostDetailScreen(postId: item.post.id),
+                      return StaggeredListItem(
+                        index: i,
+                        child: PostCard(
+                          post: item.post,
+                          distanceKm: item.distance,
+                          isOwn: item.post.userId == uid,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  PostDetailScreen(postId: item.post.id),
+                            ),
                           ),
                         ),
                       );
