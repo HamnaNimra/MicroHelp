@@ -600,11 +600,25 @@ class _LinkedAccountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.read<AuthService>();
     final linked = auth.getLinkedProviders().contains(providerId);
+    final cs = Theme.of(context).colorScheme;
 
     return ListTile(
-      leading: Icon(icon, size: 28),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 24, color: cs.onSurface),
+      ),
       title: Text(providerName),
-      subtitle: Text(linked ? 'Connected' : 'Not connected'),
+      subtitle: Text(
+        linked ? 'Connected' : 'Not connected',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: linked ? cs.primary : cs.onSurfaceVariant,
+            ),
+      ),
       contentPadding: EdgeInsets.zero,
       trailing: linked
           ? TextButton(
