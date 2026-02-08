@@ -617,8 +617,8 @@ class _LinkedAccountTile extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(providerName,
                     style: Theme.of(context).textTheme.bodyLarge),

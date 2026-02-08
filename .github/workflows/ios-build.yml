@@ -1,62 +1,59 @@
-name: MicroHelp iOS Build (No Mac Needed)
+name: Build iOS IPA
 
 on:
   push:
     branches:
-      - engage_widgets  # or your testing branch
+      - engage_widgets
   workflow_dispatch:
 
 jobs:
   build-ios:
     runs-on: macos-latest
-
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    - name: Checkout Repo
+      uses: actions/checkout@v4
 
-      # 2️⃣ Setup Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable' # More reliable than hardcoded 3.38.9
 
-      # 3️⃣ Get dependencies
-      - name: Install Flutter packages
-        run: flutter pub get
+    - name: Get Flutter Dependencies
+      run: |
+        flutter precache --ios
+        flutter pub get
 
-      # 4️⃣ Ensure iOS folder exists
-      - name: Create iOS folder
-        run: flutter create .
+    - name: Repair iOS Toolchain
+      run: |
+        # 1. Clear the Windows-generated folder
+        rm -rf ios
 
-      # 5️⃣ Force Podfile with iOS 15 to satisfy Firebase
-      - name: Create Podfile for iOS 15
-        run: |
-          mkdir -p ios
-          cat > ios/Podfile <<EOL
-          platform :ios, '15.0'
-          use_frameworks!
-          use_modular_headers!
+        # 2. Recreate iOS folder on the Mac runner
+        flutter create . --platforms=ios
 
-          target 'Runner' do
-            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-          end
-          EOL
+        # 3. Restore Config Files
+        # Make sure these files are actually in 'ios_config/' in your GitHub repo!
+        if [ -d "ios_config" ]; then
+          cp ios_config/GoogleService-Info.plist ios/Runner/ 2>/dev/null || echo "No GoogleService-Info found"
+          cp ios_config/Info.plist ios/Runner/ 2>/dev/null || echo "No Info.plist found"
+        fi
 
-      # 6️⃣ Install CocoaPods
-      - name: Install Apple Dependencies
-        run: |
-          cd ios
-          pod install --repo-update
-          cd ..
+        # 4. Force Deployment Target to 15.0 (Robust sed)
+        # This looks for any line starting with # platform and replaces it
+        sed -i '' "s/^# platform :ios, .*/platform :ios, '15.0'/" ios/Podfile
 
-      # 7️⃣ Build unsigned IPA
-      - name: Build IPA (no codesign)
-        run: flutter build ipa --no-codesign
+        # 5. Build the bridge and install Pods
+        # Running 'flutter build ios --config-only' ensures the plugin registrant is created
+        flutter build ios --config-only --no-codesign
+        cd ios
+        pod install --repo-update
+        cd ..
 
-      # 8️⃣ Upload IPA artifact
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: microhelp.ipa
-          path: build/ios/ipa/*.ipa
+    - name: Build IPA
+      run: flutter build ipa --no-codesign
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: unsigned-ipa
+        path: build/ios/ipa/*.ipa
