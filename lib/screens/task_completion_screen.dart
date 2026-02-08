@@ -25,7 +25,7 @@ class TaskCompletionScreen extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: badges.map((b) => ListTile(
-            leading: Icon(b.icon, color: Colors.amber, size: 32),
+            leading: Icon(b.icon, color: AppColors.badgeEarned(context), size: 32),
             title: Text(b.name),
             subtitle: Text(b.description),
           )).toList(),
