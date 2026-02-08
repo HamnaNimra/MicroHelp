@@ -237,9 +237,9 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
 
     if (_idPhoto == null || !_hasSelfie) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please provide both your ID photo and selfie.'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: const Text('Please provide both your ID photo and selfie.'),
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
         ),
       );
       return;
@@ -283,19 +283,19 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
       if (mounted) {
         setState(() => _alreadyRequested = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content:
-                Text('Verification request submitted! We\'ll review it soon.'),
-            backgroundColor: Colors.green,
+                const Text('Verification request submitted! We\'ll review it soon.'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to submit request. Try again later.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to submit request. Try again later.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -536,7 +536,7 @@ class _QrSessionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: QrImageView(
