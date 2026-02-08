@@ -189,23 +189,29 @@ class _ChatScreenState extends State<ChatScreen> {
 
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: firestore.getChatSharing(widget.postId, uid),
-        builder: (ctx, snapshot) {
-          final data = snapshot.data?.data() ?? {};
-          final shareName = data['shareName'] as bool? ?? false;
-          final sharePhone = data['sharePhone'] as bool? ?? false;
-          final sharePhoto = data['sharePhoto'] as bool? ?? false;
-          final shareLocation = data['shareLocation'] as bool? ?? false;
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) =>
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: firestore.getChatSharing(widget.postId, uid),
+          builder: (ctx, snapshot) {
+            final data = snapshot.data?.data() ?? {};
+            final shareName = data['shareName'] as bool? ?? false;
+            final sharePhone = data['sharePhone'] as bool? ?? false;
+            final sharePhoto = data['sharePhoto'] as bool? ?? false;
+            final shareLocation = data['shareLocation'] as bool? ?? false;
 
-          final hasPhone = _myUser?.phone != null && _myUser!.phone!.isNotEmpty;
-          final hasPhoto = _myUser?.profilePic != null;
+            final hasPhone =
+                _myUser?.phone != null && _myUser!.phone!.isNotEmpty;
+            final hasPhoto = _myUser?.profilePic != null;
 
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            return ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(24),
               children: [
                 Text(
                   'Sharing preferences',
@@ -300,9 +306,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(height: 8),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
