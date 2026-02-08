@@ -6,6 +6,7 @@ import '../models/post_model.dart';
 import '../constants/badges.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 
@@ -82,9 +83,9 @@ class TaskCompletionScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 if (post.completed) ...[
-                  const Chip(
-                    label: Text('Already completed'),
-                    backgroundColor: Colors.grey,
+                  Chip(
+                    label: const Text('Already completed'),
+                    backgroundColor: Theme.of(context).colorScheme.outline,
                   ),
                 ] else if (!canInteract) ...[
                   const Text('Only the helper or poster can manage completion.'),
@@ -163,18 +164,18 @@ class TaskCompletionScreen extends StatelessWidget {
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Task completed! Helper earned +1 trust score.'),
-                                      backgroundColor: Colors.green,
+                                    SnackBar(
+                                      content: const Text('Task completed! Helper earned +1 trust score.'),
+                                      backgroundColor: Theme.of(context).colorScheme.primary,
                                     ),
                                   );
                                 }
                               } catch (_) {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Failed. Check your connection and try again.'),
-                                      backgroundColor: Colors.red,
+                                    SnackBar(
+                                      content: const Text('Failed. Check your connection and try again.'),
+                                      backgroundColor: Theme.of(context).colorScheme.error,
                                     ),
                                   );
                                 }
@@ -196,19 +197,19 @@ class TaskCompletionScreen extends StatelessWidget {
                                   if (context.mounted) {
                                     Navigator.of(context).pop();
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
+                                      SnackBar(
+                                        content: const Text(
                                             'Completion request sent! The requester will be asked to approve.'),
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
                                       ),
                                     );
                                   }
                                 } catch (_) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Failed. Try again.'),
-                                        backgroundColor: Colors.red,
+                                      SnackBar(
+                                        content: const Text('Failed. Try again.'),
+                                        backgroundColor: Theme.of(context).colorScheme.error,
                                       ),
                                     );
                                   }
@@ -270,18 +271,18 @@ class TaskCompletionScreen extends StatelessWidget {
                                   if (context.mounted) {
                                     Navigator.of(context).pop();
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Task marked complete!'),
-                                        backgroundColor: Colors.green,
+                                      SnackBar(
+                                        content: const Text('Task marked complete!'),
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
                                       ),
                                     );
                                   }
                                 } catch (_) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Failed. Try again.'),
-                                        backgroundColor: Colors.red,
+                                      SnackBar(
+                                        content: const Text('Failed. Try again.'),
+                                        backgroundColor: Theme.of(context).colorScheme.error,
                                       ),
                                     );
                                   }
