@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post_model.dart';
 import '../theme/app_theme.dart';
+import 'tap_scale.dart';
 
 class PostCard extends StatelessWidget {
   const PostCard({
@@ -23,10 +24,12 @@ class PostCard extends StatelessWidget {
     final accentColor =
         isRequest ? AppColors.request(context) : AppColors.offer(context);
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+    return TapScale(
+      onTap: onTap,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
         child: IntrinsicHeight(
           child: Row(
             children: [
