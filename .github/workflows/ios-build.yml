@@ -53,7 +53,7 @@ jobs:
 
       # 8️⃣ Build iOS release 
       - name: Build iOS release
-        run: flutter build ios 
+        run: flutter build ios --no-codesign
 
       # 9️⃣ Package IPA
       - name: Package IPA
