@@ -201,9 +201,9 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       final location = _selectedLocation;
       if (location == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please set a location for your post using the map or search.'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('Please set a location for your post using the map or search.'),
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
         setState(() => _submitting = false);
@@ -238,7 +238,7 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
                 ? 'Request published! Neighbors near that location will see it.'
                 : 'Offer published! Neighbors near that location will see it.',
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
       _descController.clear();
