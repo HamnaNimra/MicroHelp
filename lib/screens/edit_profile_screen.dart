@@ -602,33 +602,46 @@ class _LinkedAccountTile extends StatelessWidget {
     final linked = auth.getLinkedProviders().contains(providerId);
     final cs = Theme.of(context).colorScheme;
 
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, size: 24, color: cs.onSurface),
-      ),
-      title: Text(providerName),
-      subtitle: Text(
-        linked ? 'Connected' : 'Not connected',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: linked ? cs.primary : cs.onSurfaceVariant,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
             ),
-      ),
-      contentPadding: EdgeInsets.zero,
-      trailing: linked
-          ? TextButton(
-              onPressed: onUnlink,
-              child: const Text('Unlink'),
-            )
-          : OutlinedButton(
-              onPressed: onLink,
-              child: const Text('Link'),
+            child: Icon(icon, size: 24, color: cs.onSurface),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(providerName,
+                    style: Theme.of(context).textTheme.bodyLarge),
+                Text(
+                  linked ? 'Connected' : 'Not connected',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: linked ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                ),
+              ],
             ),
+          ),
+          linked
+              ? TextButton(
+                  onPressed: onUnlink,
+                  child: const Text('Unlink'),
+                )
+              : OutlinedButton(
+                  onPressed: onLink,
+                  child: const Text('Link'),
+                ),
+        ],
+      ),
     );
   }
 }
