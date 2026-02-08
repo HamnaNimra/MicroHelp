@@ -12,6 +12,8 @@ import '../widgets/empty_state_view.dart';
 import '../widgets/first_time_tip_banner.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/post_card.dart';
+import '../widgets/shimmer_loading.dart';
+import '../widgets/staggered_list_item.dart';
 import 'post_detail_screen.dart';
 
 class FeedScreen extends StatefulWidget {
