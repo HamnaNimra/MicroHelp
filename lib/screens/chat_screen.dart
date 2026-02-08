@@ -313,11 +313,19 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Returns the display name or "Anonymous" based on sharing prefs.
+  /// Returns the display name or initials based on sharing prefs.
   String _displayName(UserModel? user, Map<String, dynamic> sharing) {
     final shared = sharing['shareName'] as bool? ?? false;
     if (shared && user != null) return user.name;
-    return 'Anonymous';
+    // Show initials instead of "Anonymous"
+    if (user != null && user.name.isNotEmpty) {
+      final parts = user.name.trim().split(RegExp(r'\s+'));
+      if (parts.length >= 2) {
+        return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+      }
+      return parts.first[0].toUpperCase();
+    }
+    return '?';
   }
 
   @override
@@ -606,7 +614,7 @@ class _ChatBody extends StatelessWidget {
   }
 }
 
-/// A compact info bar showing what the other user has shared (phone, location).
+/// A compact info bar showing the other user's gender, age, and shared info.
 class _SharedInfoBar extends StatelessWidget {
   const _SharedInfoBar({
     required this.otherUser,
@@ -623,6 +631,23 @@ class _SharedInfoBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chips = <Widget>[];
+
+    // Always show gender and age range if available
+    if (otherUser?.gender != null && otherUser!.gender!.isNotEmpty) {
+      chips.add(Chip(
+        avatar: const Icon(Icons.person, size: 16),
+        label: Text(otherUser!.gender!),
+        visualDensity: VisualDensity.compact,
+      ));
+    }
+
+    if (otherUser?.ageRange != null && otherUser!.ageRange!.isNotEmpty) {
+      chips.add(Chip(
+        avatar: const Icon(Icons.cake, size: 16),
+        label: Text(otherUser!.ageRange!),
+        visualDensity: VisualDensity.compact,
+      ));
+    }
 
     if (otherSharesPhone &&
         otherUser?.phone != null &&
