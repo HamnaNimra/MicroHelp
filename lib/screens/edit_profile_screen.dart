@@ -96,9 +96,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to upload photo. Try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to upload photo. Try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -138,9 +138,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to remove photo. Try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to remove photo. Try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -178,9 +178,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save. Check your connection and try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to save. Check your connection and try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -202,7 +202,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${provider == 'google' ? 'Google' : 'Apple'} account linked!'),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
@@ -214,13 +214,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _ => e.message ?? 'Failed to link account.',
         };
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.red),
+          SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to link account.'), backgroundColor: Colors.red),
+          SnackBar(content: const Text('Failed to link account.'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     }
@@ -230,9 +230,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final providers = context.read<AuthService>().getLinkedProviders();
     if (providers.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You must keep at least one sign-in method.'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: const Text('You must keep at least one sign-in method.'),
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
         ),
       );
       return;
@@ -244,14 +244,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${providerId == 'google.com' ? 'Google' : 'Apple'} account unlinked.'),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to unlink account.'), backgroundColor: Colors.red),
+          SnackBar(content: const Text('Failed to unlink account.'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     }
@@ -368,7 +368,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onError,
                       ),
                     )
                   : Text(isPasswordUser
@@ -407,13 +407,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.4),
+                            color: Theme.of(context).colorScheme.scrim.withAlpha(102),
                             shape: BoxShape.circle,
                           ),
-                          child: const Center(
+                          child: Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                         ),
@@ -427,7 +427,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          icon: Icon(Icons.camera_alt, color: Theme.of(context).colorScheme.onPrimary, size: 20),
                           onPressed: _uploadingPhoto ? null : _pickAndUploadPhoto,
                           constraints: const BoxConstraints(
                             minWidth: 36,
