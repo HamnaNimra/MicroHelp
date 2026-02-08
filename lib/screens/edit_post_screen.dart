@@ -94,18 +94,18 @@ class _EditPostScreenState extends State<EditPostScreen> {
         Navigator.of(context).pop(true);
         Navigator.of(context).pop(); // Also pop the detail screen
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Post deleted.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Post deleted.'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete. Check your connection.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to delete. Check your connection.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
