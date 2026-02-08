@@ -1,45 +1,76 @@
-name: Build iOS IPA (Flutter)
+name: MicroHelp iOS Hot-Reload + Google Drive
 
 on:
   push:
     branches:
-      - main
-      - engage_widgets
+      - engage_widgets  # testing branch
   workflow_dispatch:
 
 jobs:
-  build-ios:
+  hot-reload-ios:
     runs-on: macos-latest
 
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      # 3️⃣ Install packages
       - name: Get Flutter packages
         run: flutter pub get
 
-      # Ensure iOS folder exists (prevents "not configured" error)
-      - name: Ensure iOS folder exists
+      # 4️⃣ Ensure iOS folder exists
+      - name: Ensure iOS folder
         run: flutter create .
 
-      - name: Build iOS release (no code signing)
+      # 5️⃣ Create Podfile dynamically (iOS 15)
+      - name: Create Podfile for iOS
+        run: |
+          mkdir -p ios
+          cat > ios/Podfile <<EOL
+          platform :ios, '15.0'
+          use_frameworks!
+          target 'Runner' do
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+          end
+          EOL
+
+      # 6️⃣ Install CocoaPods
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install --repo-update
+
+      # 7️⃣ Build iOS release (no codesign)
+      - name: Build iOS release
         run: flutter build ios --release --no-codesign
 
+      # 8️⃣ Package IPA
       - name: Package IPA
         run: |
           mkdir -p build/ipa
           cd build/ios/iphoneos
           mkdir Payload
           cp -r Runner.app Payload/
-          zip -r ../../ipa/app.ipa Payload
+          zip -r ../../ipa/app-${{ github.run_number }}.ipa Payload
 
+      # 9️⃣ Upload IPA artifact for backup
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa
-          path: build/ipa/app.ipa
+          name: microhelp-hot-reload-ipa
+          path: build/ipa/app-${{ github.run_number }}.ipa
+
+      # 🔟 Upload IPA to Google Drive
+      - name: Upload to Google Drive
+        uses: gdrive-org/gdrive-upload-action@v1
+        with:
+          service_account_json: ${{ secrets.GDRIVE_JSON }}
+          folder_id: '1gufmCZ9VWuytvNYq9tC3hwrRah598rEH'
+          file: build/ipa/app-${{ github.run_number }}.ipa
