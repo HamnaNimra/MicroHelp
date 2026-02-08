@@ -52,7 +52,12 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      _removeOverlay();
+      // Delay removal so tap on suggestion has time to register
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && !_focusNode.hasFocus) {
+          _removeOverlay();
+        }
+      });
     }
   }
 
