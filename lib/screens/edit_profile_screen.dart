@@ -30,7 +30,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _saving = false;
   bool _uploadingPhoto = false;
   String? _profilePicUrl;
-  late List<String> _linkedProviders;
 
   @override
   void initState() {
@@ -40,9 +39,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioCtrl = TextEditingController(text: widget.user.bio);
     _phoneCtrl = TextEditingController(text: widget.user.phone);
     _profilePicUrl = widget.user.profilePic;
-
-    final auth = context.read<AuthService>();
-    _linkedProviders = auth.getLinkedProviders();
   }
 
   @override
@@ -202,7 +198,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await auth.linkWithApple();
       }
       if (mounted) {
-        setState(() => _linkedProviders = auth.getLinkedProviders());
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${provider == 'google' ? 'Google' : 'Apple'} account linked!'),
@@ -221,11 +217,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Failed to link account.'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
     }
   }
 
   Future<void> _unlinkProvider(String providerId) async {
-    if (_linkedProviders.length <= 1) {
+    final providers = context.read<AuthService>().getLinkedProviders();
+    if (providers.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('You must keep at least one sign-in method.'),
@@ -235,10 +238,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
     try {
-      final auth = context.read<AuthService>();
-      await auth.unlinkProvider(providerId);
+      await context.read<AuthService>().unlinkProvider(providerId);
       if (mounted) {
-        setState(() => _linkedProviders = auth.getLinkedProviders());
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${providerId == 'google.com' ? 'Google' : 'Apple'} account unlinked.'),
@@ -332,7 +334,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (context.mounted) {
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const LandingScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const LandingScreen()),
                             (r) => false,
                           );
                         }
@@ -426,7 +429,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: IconButton(
                           icon: Icon(Icons.camera_alt, color: Theme.of(context).colorScheme.onPrimary, size: 20),
                           onPressed: _uploadingPhoto ? null : _pickAndUploadPhoto,
-                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
                           padding: EdgeInsets.zero,
                         ),
                       ),
@@ -522,19 +528,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 'Link additional sign-in methods to your account.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               _LinkedAccountTile(
                 providerName: 'Google',
                 providerId: 'google.com',
                 icon: Icons.g_mobiledata,
-                linked: _linkedProviders.contains('google.com'),
                 onLink: () => _linkProvider('google'),
                 onUnlink: () => _unlinkProvider('google.com'),
               ),
@@ -542,7 +547,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 providerName: 'Apple',
                 providerId: 'apple.com',
                 icon: Icons.apple,
-                linked: _linkedProviders.contains('apple.com'),
                 onLink: () => _linkProvider('apple'),
                 onUnlink: () => _unlinkProvider('apple.com'),
               ),
@@ -582,7 +586,6 @@ class _LinkedAccountTile extends StatelessWidget {
     required this.providerName,
     required this.providerId,
     required this.icon,
-    required this.linked,
     required this.onLink,
     required this.onUnlink,
   });
@@ -590,18 +593,18 @@ class _LinkedAccountTile extends StatelessWidget {
   final String providerName;
   final String providerId;
   final IconData icon;
-  final bool linked;
   final VoidCallback onLink;
   final VoidCallback onUnlink;
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.read<AuthService>();
+    final linked = auth.getLinkedProviders().contains(providerId);
     final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 40,
@@ -613,34 +616,30 @@ class _LinkedAccountTile extends StatelessWidget {
             child: Icon(icon, size: 24, color: cs.onSurface),
           ),
           const SizedBox(width: 16),
-          Flexible(
-            fit: FlexFit.loose, // let the text wrap naturally
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  providerName,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
+                Text(providerName,
+                    style: Theme.of(context).textTheme.bodyLarge),
                 Text(
                   linked ? 'Connected' : 'Not connected',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: linked ? cs.primary : cs.onSurfaceVariant,
                       ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
           linked
-              ? TextButton(onPressed: onUnlink, child: const Text('Unlink'))
-              : OutlinedButton(onPressed: onLink, child: const Text('Link')),
+              ? TextButton(
+                  onPressed: onUnlink,
+                  child: const Text('Unlink'),
+                )
+              : OutlinedButton(
+                  onPressed: onLink,
+                  child: const Text('Link'),
+                ),
         ],
       ),
     );

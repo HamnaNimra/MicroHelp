@@ -3,7 +3,7 @@ name: MicroHelp iOS Build (No Mac Needed)
 on:
   push:
     branches:
-      - engage_widgets  # replace with your branch
+      - engage_widgets  # or your testing branch
   workflow_dispatch:
 
 jobs:
@@ -11,32 +11,29 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # 1️⃣ Checkout repo
-      - name: Checkout repository
+      # 1️⃣ Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Flutter
+      # 2️⃣ Setup Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3️⃣ Install Flutter packages
-      - name: Get Flutter packages
+      # 3️⃣ Get dependencies
+      - name: Install Flutter packages
         run: flutter pub get
 
-      # 4️⃣ Generate iOS folder (if missing)
-      - name: Ensure iOS folder exists
+      # 4️⃣ Ensure iOS folder exists
+      - name: Create iOS folder
         run: flutter create .
 
-      # 5️⃣ Force iOS 15 deployment target
-      - name: Ensure iOS deployment target
+      # 5️⃣ Force Podfile with iOS 15 to satisfy Firebase
+      - name: Create Podfile for iOS 15
         run: |
           mkdir -p ios
-          if [ -f ios/Podfile ]; then
-            sed -i '' "s/platform :ios, .*/platform :ios, '15.0'/g" ios/Podfile || echo "platform :ios, '15.0'" >> ios/Podfile
-          else
-            cat > ios/Podfile <<EOL
+          cat > ios/Podfile <<EOL
           platform :ios, '15.0'
           use_frameworks!
           use_modular_headers!
@@ -45,22 +42,21 @@ jobs:
             flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
           end
           EOL
-          fi
 
-      # 6️⃣ Install CocoaPods dependencies
-      - name: Install iOS pods
+      # 6️⃣ Install CocoaPods
+      - name: Install Apple Dependencies
         run: |
           cd ios
           pod install --repo-update
           cd ..
 
       # 7️⃣ Build unsigned IPA
-      - name: Build unsigned IPA
+      - name: Build IPA (no codesign)
         run: flutter build ipa --no-codesign
 
       # 8️⃣ Upload IPA artifact
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: microhelp-ios-ipa
+          name: microhelp.ipa
           path: build/ios/ipa/*.ipa
