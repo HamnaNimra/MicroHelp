@@ -1,9 +1,9 @@
-name: MicroHelp iOS Hot-Reload 
+name: MicroHelp iOS Hot-Reload + Google Drive
 
 on:
   push:
     branches:
-      - engage_widgets  # testing branch
+      - engage_widgets
   workflow_dispatch:
 
 jobs:
@@ -15,21 +15,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Flutter
+      # 2️⃣ Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3️⃣ Install packages
+      # 3️⃣ Precache iOS artifacts
+      - name: Precache Flutter iOS artifacts
+        run: flutter precache --ios
+
+      # 4️⃣ Get Flutter packages
       - name: Get Flutter packages
         run: flutter pub get
 
-      # 4️⃣ Ensure iOS folder exists
+      # 5️⃣ Ensure iOS folder exists
       - name: Ensure iOS folder
         run: flutter create .
 
-      # 5️⃣ Create Podfile dynamically (iOS 15)
+      # 6️⃣ Create minimal Podfile for CI
       - name: Create minimal Podfile for iOS
         run: |
           mkdir -p ios
@@ -41,17 +45,17 @@ jobs:
           end
           EOL
 
-      # 6️⃣ Install CocoaPods
-      - name: Install CocoaPods dependencies
+      # 7️⃣ Install CocoaPods dependencies
+      - name: Install CocoaPods
         run: |
           cd ios
           pod install --repo-update
 
-      # 7️⃣ Build iOS release (no codesign)
+      # 8️⃣ Build iOS release (unsigned)
       - name: Build iOS release
         run: flutter build ios --release --no-codesign
 
-      # 8️⃣ Package IPA
+      # 9️⃣ Package IPA
       - name: Package IPA
         run: |
           mkdir -p build/ipa
@@ -60,7 +64,7 @@ jobs:
           cp -r Runner.app Payload/
           zip -r ../../ipa/app-${{ github.run_number }}.ipa Payload
 
-      # 9️⃣ Upload IPA artifact for backup
+      # 🔟 Upload IPA artifact
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
