@@ -25,6 +25,8 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     final avatar = CircleAvatar(
       radius: 16,
       backgroundImage:
@@ -54,9 +56,14 @@ class MessageBubble extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: isMe
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
+                    ? cs.primaryContainer
+                    : cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isMe ? 16 : 4),
+                  bottomRight: Radius.circular(isMe ? 4 : 16),
+                ),
               ),
               child: Column(
                 crossAxisAlignment:
@@ -70,14 +77,18 @@ class MessageBubble extends StatelessWidget {
                         style:
                             Theme.of(context).textTheme.labelSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: cs.primary,
                                 ),
                       ),
                     ),
                   Text(message.text),
+                  const SizedBox(height: 2),
                   Text(
                     '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
                   ),
                 ],
               ),
