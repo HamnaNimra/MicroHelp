@@ -627,7 +627,7 @@ class _PhotoUploadCard extends StatelessWidget {
                 child: Icon(
                   hasPhoto ? Icons.check_circle : icon,
                   color: hasPhoto
-                      ? Colors.green
+                      ? theme.colorScheme.primary
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
