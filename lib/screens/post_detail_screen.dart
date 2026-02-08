@@ -354,9 +354,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 child: const Text('Open chat'),
               ),
             if (post.completed)
-              const Chip(
-                  label: Text('Completed', style: TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.grey),
+              Chip(
+                  label: Text('Completed', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+                  backgroundColor: Theme.of(context).colorScheme.outline),
           ],
         ],
       ),
