@@ -54,7 +54,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             child: const Text('Block'),
           ),
         ],
@@ -67,18 +67,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User blocked.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('User blocked.'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to block user. Try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to block user. Try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -143,20 +143,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       _blockUser(p.userId);
                     }
                   },
-                  itemBuilder: (_) => const [
+                  itemBuilder: (ctx) => [
                     PopupMenuItem(
                       value: 'report',
                       child: ListTile(
-                        leading: Icon(Icons.flag, color: Colors.orange),
-                        title: Text('Report post'),
+                        leading: Icon(Icons.flag, color: Theme.of(ctx).colorScheme.tertiary),
+                        title: const Text('Report post'),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
                     PopupMenuItem(
                       value: 'block',
                       child: ListTile(
-                        leading: Icon(Icons.block, color: Colors.red),
-                        title: Text('Block user'),
+                        leading: Icon(Icons.block, color: Theme.of(ctx).colorScheme.error),
+                        title: const Text('Block user'),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -222,6 +222,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     : 'User: ${post.userId.substring(0, 8)}...',
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          // Always show poster's gender and age range
+          if (post.posterGender != null || post.posterAgeRange != null) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              children: [
+                if (post.posterGender != null)
+                  Chip(
+                    avatar: const Icon(Icons.person, size: 16),
+                    label: Text(post.posterGender!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (post.posterAgeRange != null)
+                  Chip(
+                    avatar: const Icon(Icons.cake, size: 16),
+                    label: Text(post.posterAgeRange!),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ],
           if (post.location != null) ...[
             const SizedBox(height: 16),
             Text(
@@ -283,7 +304,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(e.message),
-                        backgroundColor: Colors.orange,
+                        backgroundColor: Theme.of(context).colorScheme.tertiary,
                       ),
                     );
                   }
@@ -300,7 +321,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(msg),
-                        backgroundColor: Colors.red,
+                        backgroundColor: Theme.of(context).colorScheme.error,
                       ),
                     );
                   }
@@ -312,9 +333,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   }());
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Failed to accept. Check your connection and try again.'),
-                        backgroundColor: Colors.red,
+                      SnackBar(
+                        content: const Text('Failed to accept. Check your connection and try again.'),
+                        backgroundColor: Theme.of(context).colorScheme.error,
                       ),
                     );
                   }
@@ -333,9 +354,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 child: const Text('Open chat'),
               ),
             if (post.completed)
-              const Chip(
-                  label: Text('Completed', style: TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.grey),
+              Chip(
+                  label: Text('Completed', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+                  backgroundColor: Theme.of(context).colorScheme.outline),
           ],
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants/badges.dart';
+import '../theme/app_theme.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/trust_score_badge.dart';
@@ -81,13 +82,15 @@ class BadgesScreen extends StatelessWidget {
                         child: ListTile(
                           leading: Icon(
                             badge.icon,
-                            color: earned ? Colors.amber : Colors.grey,
+                            color: earned
+                                ? AppColors.badgeEarned(context)
+                                : AppColors.badgeUnearned(context),
                             size: 32,
                           ),
                           title: Text(
                             badge.name,
                             style: TextStyle(
-                              color: earned ? null : Colors.grey,
+                              color: earned ? null : Theme.of(context).colorScheme.outline,
                               fontWeight:
                                   earned ? FontWeight.bold : FontWeight.normal,
                             ),
@@ -100,14 +103,14 @@ class BadgesScreen extends StatelessWidget {
                                         : '')
                                 : progress ?? badge.description,
                             style: TextStyle(
-                              color: earned ? null : Colors.grey,
+                              color: earned ? null : Theme.of(context).colorScheme.outline,
                             ),
                           ),
                           trailing: earned
-                              ? const Icon(Icons.check_circle,
-                                  color: Colors.green)
-                              : const Icon(Icons.lock_outline,
-                                  color: Colors.grey),
+                              ? Icon(Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary)
+                              : Icon(Icons.lock_outline,
+                                  color: Theme.of(context).colorScheme.outline),
                         ),
                       );
                     }),

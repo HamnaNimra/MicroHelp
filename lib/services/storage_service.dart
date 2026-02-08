@@ -21,6 +21,34 @@ class StorageService {
     return ref.getDownloadURL();
   }
 
+  /// Uploads a profile picture and returns the download URL.
+  Future<String> uploadProfilePicture({
+    required String userId,
+    required Uint8List bytes,
+  }) async {
+    final ref = _storage
+        .ref()
+        .child('profile_pictures')
+        .child('$userId.jpg');
+
+    final metadata = SettableMetadata(contentType: 'image/jpeg');
+    await ref.putData(bytes, metadata);
+    return ref.getDownloadURL();
+  }
+
+  /// Deletes the user's profile picture.
+  Future<void> deleteProfilePicture(String userId) async {
+    try {
+      await _storage
+          .ref()
+          .child('profile_pictures')
+          .child('$userId.jpg')
+          .delete();
+    } catch (_) {
+      // File may not exist — that's fine.
+    }
+  }
+
   /// Deletes all verification images for a user.
   Future<void> deleteVerificationImages(String userId) async {
     try {

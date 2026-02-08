@@ -31,6 +31,10 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   GeoPoint? _selectedLocation; // User-picked pin on map
   bool _loadingLocation = false;
 
+  // Poster info (for anonymous posts that still show gender/age)
+  String? _posterGender;
+  String? _posterAgeRange;
+
   @override
   void initState() {
     super.initState();
@@ -54,7 +58,10 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
             .collection('users')
             .doc(uid)
             .get();
-        final savedLocation = doc.data()?['location'] as GeoPoint?;
+        final data = doc.data();
+        final savedLocation = data?['location'] as GeoPoint?;
+        _posterGender = data?['gender'] as String?;
+        _posterAgeRange = data?['ageRange'] as String?;
         if (savedLocation != null && mounted) {
           setState(() {
             _gpsLocation = savedLocation;
@@ -194,9 +201,9 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
       final location = _selectedLocation;
       if (location == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please set a location for your post using the map or search.'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('Please set a location for your post using the map or search.'),
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
         setState(() => _submitting = false);
@@ -213,6 +220,8 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
         expiresAt: _expiresAt,
         anonymous: _anonymous,
         estimatedMinutes: _estimatedMinutes,
+        posterGender: _posterGender,
+        posterAgeRange: _posterAgeRange,
       );
 
       await context.read<FirestoreService>().createPost(post);
@@ -229,7 +238,7 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
                 ? 'Request published! Neighbors near that location will see it.'
                 : 'Offer published! Neighbors near that location will see it.',
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
       _descController.clear();
@@ -250,9 +259,9 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create post. Check your connection and try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to create post. Check your connection and try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

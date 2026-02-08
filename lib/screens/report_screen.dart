@@ -65,18 +65,18 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thanks for reporting. We\'ll review this soon.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Thanks for reporting. We\'ll review this soon.'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to submit report. Try again later.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to submit report. Try again later.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

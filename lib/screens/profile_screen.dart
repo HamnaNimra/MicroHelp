@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+import '../theme/theme_provider.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 import '../widgets/profile_avatar.dart';
@@ -126,12 +127,12 @@ class ProfileScreen extends StatelessWidget {
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
               child: deleting
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onError,
                       ),
                     )
                   : Text(isPasswordUser
@@ -207,139 +208,235 @@ class ProfileScreen extends StatelessWidget {
             return const ErrorView(message: 'Profile not found.');
           }
           final user = UserModel.fromFirestore(doc);
+          final cs = Theme.of(context).colorScheme;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               children: [
-                const SizedBox(height: 16),
-                ProfileAvatar(
-                  name: user.name,
-                  profilePicUrl: user.profilePic,
-                  isVerified: user.idVerified,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  user.name,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                TrustScoreBadge(score: user.trustScore),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    if (user.gender != null)
-                      Chip(
-                        avatar: const Icon(Icons.person, size: 18),
-                        label: Text(user.gender!),
-                      ),
-                    if (user.ageRange != null)
-                      Chip(
-                        avatar: const Icon(Icons.cake, size: 18),
-                        label: Text(user.ageRange!),
-                      ),
-                    if (user.neighborhood != null)
-                      Chip(
-                        avatar: const Icon(Icons.location_on, size: 18),
-                        label: Text(user.neighborhood!),
-                      ),
-                    if (user.accountAge != null)
-                      Chip(
-                        avatar: const Icon(Icons.schedule, size: 18),
-                        label: Text(user.accountAge!),
-                      ),
-                  ],
-                ),
-                if (user.bio != null && user.bio!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    user.bio!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
+                // Profile header card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        ProfileAvatar(
+                          name: user.name,
+                          profilePicUrl: user.profilePic,
+                          isVerified: user.idVerified,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          user.name,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        TrustScoreBadge(score: user.trustScore),
+                        if (user.bio != null && user.bio!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            user.bio!,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            if (user.gender != null)
+                              Chip(
+                                avatar: const Icon(Icons.person, size: 18),
+                                label: Text(user.gender!),
+                              ),
+                            if (user.ageRange != null)
+                              Chip(
+                                avatar: const Icon(Icons.cake, size: 18),
+                                label: Text(user.ageRange!),
+                              ),
+                            if (user.neighborhood != null)
+                              Chip(
+                                avatar: const Icon(Icons.location_on, size: 18),
+                                label: Text(user.neighborhood!),
+                              ),
+                            if (user.accountAge != null)
+                              Chip(
+                                avatar: const Icon(Icons.schedule, size: 18),
+                                label: Text(user.accountAge!),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
+                const SizedBox(height: 12),
+
+                // Actions card
+                Card(
+                  child: Column(
+                    children: [
+                      _ProfileTile(
+                        icon: Icons.edit,
+                        title: 'Edit profile',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => EditProfileScreen(user: user),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _ProfileTile(
+                        icon: Icons.post_add,
+                        title: 'My Posts',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => MyPostsScreen(
+                              onNavigateToCreatePost: onNavigateToCreatePost != null
+                                  ? () {
+                                      Navigator.of(context).pop();
+                                      onNavigateToCreatePost!();
+                                    }
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _ProfileTile(
+                        icon: Icons.emoji_events,
+                        title: 'Badges & gamification',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BadgesScreen(userId: uid),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      if (!user.idVerified)
+                        _ProfileTile(
+                          icon: Icons.verified_user,
+                          title: 'Verify identity',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const VerifyIdentityScreen(),
+                            ),
+                          ),
+                        )
+                      else
+                        ListTile(
+                          leading: Icon(Icons.verified, color: cs.primary),
+                          title: const Text('Identity verified'),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        ),
+                      const Divider(height: 1, indent: 56),
+                      _ProfileTile(
+                        icon: Icons.play_circle_outline,
+                        title: 'View tutorial',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const OnboardingScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Appearance card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Appearance',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        Consumer<ThemeProvider>(
+                          builder: (context, themeProvider, _) {
+                            return SegmentedButton<ThemeSetting>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: ThemeSetting.light,
+                                  icon: Icon(Icons.light_mode, size: 18),
+                                  label: Text('Light'),
+                                ),
+                                ButtonSegment(
+                                  value: ThemeSetting.system,
+                                  icon: Icon(Icons.settings_brightness, size: 18),
+                                  label: Text('System'),
+                                ),
+                                ButtonSegment(
+                                  value: ThemeSetting.dark,
+                                  icon: Icon(Icons.dark_mode, size: 18),
+                                  label: Text('Dark'),
+                                ),
+                              ],
+                              selected: {themeProvider.setting},
+                              onSelectionChanged: (s) =>
+                                  themeProvider.setSetting(s.first),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Danger zone
+                Card(
+                  child: ListTile(
+                    leading: Icon(Icons.delete_forever, color: cs.error),
+                    title: Text(
+                      'Delete account',
+                      style: TextStyle(color: cs.error),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    onTap: () => _showDeleteAccountDialog(context),
+                  ),
+                ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => EditProfileScreen(user: user),
-                    ),
-                  ),
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Edit profile'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => MyPostsScreen(
-                        onNavigateToCreatePost: onNavigateToCreatePost != null
-                            ? () {
-                                Navigator.of(context).pop();
-                                onNavigateToCreatePost!();
-                              }
-                            : null,
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.post_add),
-                  label: const Text('My Posts'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => BadgesScreen(userId: uid),
-                    ),
-                  ),
-                  icon: const Icon(Icons.emoji_events),
-                  label: const Text('Badges & gamification'),
-                ),
-                const SizedBox(height: 12),
-                if (!user.idVerified)
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const VerifyIdentityScreen(),
-                      ),
-                    ),
-                    icon: const Icon(Icons.verified_user),
-                    label: const Text('Verify identity'),
-                  )
-                else
-                  const Chip(
-                    avatar: Icon(Icons.verified, color: Colors.blue),
-                    label: Text('Identity verified'),
-                  ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const OnboardingScreen(),
-                    ),
-                  ),
-                  icon: const Icon(Icons.play_circle_outline),
-                  label: const Text('View tutorial'),
-                ),
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 16),
-                TextButton.icon(
-                  onPressed: () => _showDeleteAccountDialog(context),
-                  icon: const Icon(Icons.delete_forever),
-                  label: const Text('Delete account'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                ),
               ],
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class _ProfileTile extends StatelessWidget {
+  const _ProfileTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      onTap: onTap,
     );
   }
 }

@@ -55,8 +55,47 @@ class FirestoreService {
     await ref.update({'acceptedBy': userId});
   }
 
-  /// Completes the post. If [currentUserId] is the helper (acceptedBy),
-  /// also increments their trust score in a transaction (works on Spark plan without Cloud Functions).
+  /// Helper or owner requests completion. Sets completionRequestedBy
+  /// so the other party can approve.
+  Future<void> requestCompletion(String postId, String requestedByUid) async {
+    await _posts.doc(postId).update({
+      'completionRequestedBy': requestedByUid,
+    });
+  }
+
+  /// Approves a completion request (called by the other party).
+  /// Marks the post as completed and awards trust score to the helper.
+  Future<void> approveCompletion(String postId) async {
+    final postRef = _posts.doc(postId);
+    final postSnap = await postRef.get();
+    if (!postSnap.exists || postSnap.data() == null) return;
+    final data = postSnap.data()!;
+    if (data['completed'] == true) return;
+
+    final helperId = data['acceptedBy'] as String?;
+
+    if (helperId != null) {
+      final userRef = _firestore.collection('users').doc(helperId);
+      await _firestore.runTransaction((tx) async {
+        final post = await tx.get(postRef);
+        if (post.data()?['completed'] == true) return;
+        tx.update(postRef, {
+          'completed': true,
+          'completionRequestedBy': FieldValue.delete(),
+        });
+        final userSnap = await tx.get(userRef);
+        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
+        tx.update(userRef, {'trustScore': current + 1});
+      });
+    } else {
+      await postRef.update({
+        'completed': true,
+        'completionRequestedBy': FieldValue.delete(),
+      });
+    }
+  }
+
+  /// Direct completion (owner can always directly complete their own task).
   Future<void> completePost(String postId, String currentUserId) async {
     final postRef = _posts.doc(postId);
     final postSnap = await postRef.get();
@@ -65,20 +104,27 @@ class FirestoreService {
     if (data['completed'] == true) return;
 
     final helperId = data['acceptedBy'] as String?;
-    final isHelper = helperId == currentUserId;
+    final isOwner = data['userId'] == currentUserId;
 
-    if (isHelper && helperId != null) {
+    // Owner completing = direct approve, give helper trust score
+    if (isOwner && helperId != null) {
       final userRef = _firestore.collection('users').doc(helperId);
       await _firestore.runTransaction((tx) async {
         final post = await tx.get(postRef);
         if (post.data()?['completed'] == true) return;
-        tx.update(postRef, {'completed': true});
+        tx.update(postRef, {
+          'completed': true,
+          'completionRequestedBy': FieldValue.delete(),
+        });
         final userSnap = await tx.get(userRef);
         final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
         tx.update(userRef, {'trustScore': current + 1});
       });
     } else {
-      await postRef.update({'completed': true});
+      await postRef.update({
+        'completed': true,
+        'completionRequestedBy': FieldValue.delete(),
+      });
     }
   }
 
@@ -90,6 +136,65 @@ class FirestoreService {
 
   Future<void> sendMessage(String postId, MessageModel message) async {
     await _messages(postId).add(message.toFirestore());
+  }
+
+  // --------------- Per-chat sharing preferences ---------------
+
+  /// Returns a real-time stream of a user's sharing preferences for a specific chat.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> getChatSharing(
+      String postId, String userId) {
+    return _firestore
+        .collection('messages')
+        .doc(postId)
+        .collection('sharing')
+        .doc(userId)
+        .snapshots();
+  }
+
+  /// Updates sharing preferences for the current user in a specific chat.
+  /// Once shareName/sharePhone/sharePhoto are enabled, they cannot be disabled.
+  /// shareLocation can be toggled freely.
+  Future<void> updateChatSharing(
+    String postId,
+    String userId, {
+    bool? shareName,
+    bool? sharePhone,
+    bool? sharePhoto,
+    bool? shareLocation,
+  }) async {
+    final ref = _firestore
+        .collection('messages')
+        .doc(postId)
+        .collection('sharing')
+        .doc(userId);
+
+    final doc = await ref.get();
+    final current = doc.data() ?? {};
+
+    final updates = <String, dynamic>{};
+    // Once enabled, name/phone/photo cannot be un-shared
+    if (shareName == true && current['shareName'] != true) {
+      updates['shareName'] = true;
+    }
+    if (sharePhone == true && current['sharePhone'] != true) {
+      updates['sharePhone'] = true;
+    }
+    if (sharePhoto == true && current['sharePhoto'] != true) {
+      updates['sharePhoto'] = true;
+    }
+    // Location can be toggled freely
+    if (shareLocation != null) {
+      updates['shareLocation'] = shareLocation;
+    }
+
+    if (updates.isNotEmpty) {
+      await ref.set(updates, SetOptions(merge: true));
+    }
+  }
+
+  /// Gets a user document by ID.
+  Future<DocumentSnapshot<Map<String, dynamic>>> getUser(String userId) {
+    return _firestore.collection('users').doc(userId).get();
   }
 
   /// Checks trust score against badge thresholds and awards any new badges.

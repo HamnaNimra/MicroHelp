@@ -13,9 +13,13 @@ class UserModel {
   final DateTime? birthday;
   final String? neighborhood;
   final String? bio;
+  final String? phone;
   final DateTime? createdAt;
   final bool idVerified;
   final List<String> blockedUsers;
+  final bool shareName;
+  final bool sharePhone;
+  final bool sharePhoto;
 
   const UserModel({
     required this.id,
@@ -30,9 +34,13 @@ class UserModel {
     this.birthday,
     this.neighborhood,
     this.bio,
+    this.phone,
     this.createdAt,
     this.idVerified = false,
     this.blockedUsers = const [],
+    this.shareName = false,
+    this.sharePhone = false,
+    this.sharePhoto = false,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -50,9 +58,13 @@ class UserModel {
       birthday: (data['birthday'] as Timestamp?)?.toDate(),
       neighborhood: data['neighborhood'] as String?,
       bio: data['bio'] as String?,
+      phone: data['phone'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       idVerified: (data['idVerified'] as bool?) ?? false,
       blockedUsers: List<String>.from(data['blockedUsers'] as List? ?? []),
+      shareName: (data['shareName'] as bool?) ?? false,
+      sharePhone: (data['sharePhone'] as bool?) ?? false,
+      sharePhoto: (data['sharePhoto'] as bool?) ?? false,
     );
   }
 
@@ -69,9 +81,13 @@ class UserModel {
       if (birthday != null) 'birthday': Timestamp.fromDate(birthday!),
       if (neighborhood != null) 'neighborhood': neighborhood,
       if (bio != null) 'bio': bio,
+      if (phone != null) 'phone': phone,
       if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
       'idVerified': idVerified,
       if (blockedUsers.isNotEmpty) 'blockedUsers': blockedUsers,
+      'shareName': shareName,
+      'sharePhone': sharePhone,
+      'sharePhoto': sharePhoto,
     };
   }
 

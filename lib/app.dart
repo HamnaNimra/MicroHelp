@@ -6,6 +6,8 @@ import 'services/notification_service.dart';
 import 'services/analytics_service.dart';
 import 'services/preferences_service.dart';
 import 'services/storage_service.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
 class MicroHelpApp extends StatelessWidget {
@@ -27,17 +29,20 @@ class MicroHelpApp extends StatelessWidget {
         Provider(create: (_) => StorageService()),
         Provider(create: (_) => AnalyticsService()),
         Provider.value(value: preferencesService),
+        ChangeNotifierProvider(
+          create: (context) =>
+              ThemeProvider(context.read<PreferencesService>()),
+        ),
       ],
-      child: Builder(
-        builder: (context) {
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
           final analytics = context.read<AnalyticsService>();
           return MaterialApp(
             title: 'MicroHelp',
             debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-              useMaterial3: true,
-            ),
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: themeProvider.themeMode,
             navigatorObservers: [analytics.observer],
             home: const SplashScreen(),
           );

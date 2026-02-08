@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 enum PasswordStrength { weak, medium, strong }
 
@@ -18,15 +19,15 @@ class PasswordStrengthMeter extends StatelessWidget {
 
     switch (strength) {
       case PasswordStrength.weak:
-        color = Colors.red;
+        color = AppColors.strengthWeak;
         label = 'Weak';
         fraction = 0.33;
       case PasswordStrength.medium:
-        color = Colors.orange;
+        color = AppColors.strengthMedium;
         label = 'Medium';
         fraction = 0.66;
       case PasswordStrength.strong:
-        color = Colors.green;
+        color = AppColors.strengthStrong;
         label = 'Strong';
         fraction = 1.0;
     }

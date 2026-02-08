@@ -1,8 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../constants/legal_text.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
+import '../widgets/location_autocomplete_field.dart';
 import '../widgets/password_strength_meter.dart';
 import 'auth_screen.dart';
 import 'complete_profile_screen.dart';
@@ -241,14 +244,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 16),
 
                 // Neighborhood / Postal code
-                TextFormField(
+                LocationAutocompleteField(
                   controller: _neighborhoodCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Neighborhood or postal code',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                    helperText: 'Helps connect you with nearby neighbors',
-                  ),
+                  helperText: 'Helps connect you with nearby neighbors',
                 ),
                 const SizedBox(height: 16),
 
@@ -300,6 +298,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             .primary,
                                         decoration: TextDecoration.underline,
                                       ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () => _showLegalDialog(
+                                              'Terms of Service',
+                                              termsOfService,
+                                            ),
                                     ),
                                     const TextSpan(text: ' and '),
                                     TextSpan(
@@ -310,6 +313,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             .primary,
                                         decoration: TextDecoration.underline,
                                       ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () => _showLegalDialog(
+                                              'Privacy Policy',
+                                              privacyPolicy,
+                                            ),
                                     ),
                                   ],
                                 ),
@@ -412,6 +420,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  void _showLegalDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Text(content),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickBirthday() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -454,6 +483,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           return 'Invalid email or password. Please try again.';
         case 'email-already-in-use':
           return 'An account already exists with that email. Try signing in instead.';
+        case 'account-exists-with-different-credential':
+          return 'An account already exists with that email using a different sign-in method. '
+              'Sign in with your original method, then link this provider in Edit Profile.';
+        case 'credential-already-in-use':
+          return 'This credential is already linked to another account.';
         case 'weak-password':
           return 'Password is too weak. Use at least 6 characters.';
         case 'too-many-requests':

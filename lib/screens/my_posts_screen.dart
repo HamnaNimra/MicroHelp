@@ -122,16 +122,19 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
   }
 
   static Widget _statusIcon(PostModel post) {
-    if (post.completed) {
-      return const Icon(Icons.check_circle, color: Colors.green, size: 20);
-    }
-    if (post.acceptedBy != null) {
-      return const Icon(Icons.chat_bubble, color: Colors.blue, size: 20);
-    }
-    if (post.expiresAt.isBefore(DateTime.now())) {
-      return const Icon(Icons.schedule, color: Colors.grey, size: 20);
-    }
-    return const Icon(Icons.hourglass_top, color: Colors.orange, size: 20);
+    return Builder(builder: (context) {
+      final cs = Theme.of(context).colorScheme;
+      if (post.completed) {
+        return Icon(Icons.check_circle, color: cs.outline, size: 20);
+      }
+      if (post.acceptedBy != null) {
+        return Icon(Icons.chat_bubble, color: cs.primary, size: 20);
+      }
+      if (post.expiresAt.isBefore(DateTime.now())) {
+        return Icon(Icons.schedule, color: cs.outline, size: 20);
+      }
+      return Icon(Icons.hourglass_top, color: cs.tertiary, size: 20);
+    });
   }
 }
 
