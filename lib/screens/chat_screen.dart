@@ -103,7 +103,7 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(
             content: const Text('Failed to send message.'),
             action: SnackBarAction(label: 'Retry', onPressed: _send),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -129,7 +129,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
             child: const Text('Block'),
           ),
         ],
@@ -142,18 +143,18 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User blocked.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('User blocked.'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to block user. Try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to block user. Try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -339,20 +340,22 @@ class _ChatScreenState extends State<ChatScreen> {
                   _blockUser();
                 }
               },
-              itemBuilder: (_) => const [
+              itemBuilder: (ctx) => [
                 PopupMenuItem(
                   value: 'report',
                   child: ListTile(
-                    leading: Icon(Icons.flag, color: Colors.orange),
-                    title: Text('Report user'),
+                    leading: Icon(Icons.flag,
+                        color: Theme.of(ctx).colorScheme.tertiary),
+                    title: const Text('Report user'),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
                 PopupMenuItem(
                   value: 'block',
                   child: ListTile(
-                    leading: Icon(Icons.block, color: Colors.red),
-                    title: Text('Block user'),
+                    leading: Icon(Icons.block,
+                        color: Theme.of(ctx).colorScheme.error),
+                    title: const Text('Block user'),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
