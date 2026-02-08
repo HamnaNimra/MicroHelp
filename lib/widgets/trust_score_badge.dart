@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'animated_count.dart';
 
 class TrustScoreBadge extends StatelessWidget {
   const TrustScoreBadge({
@@ -25,9 +26,10 @@ class TrustScoreBadge extends StatelessWidget {
                 'Trust score',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              Text(
-                '$score',
+              AnimatedCount(
+                value: score,
                 style: Theme.of(context).textTheme.headlineMedium,
+                duration: const Duration(milliseconds: 1000),
               ),
             ],
           ),
@@ -41,9 +43,11 @@ class TrustScoreBadge extends StatelessWidget {
         Icon(Icons.verified_user,
             size: 20, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          'Trust score: $score',
+        AnimatedCount(
+          value: score,
+          prefix: 'Trust score: ',
           style: Theme.of(context).textTheme.titleMedium,
+          duration: const Duration(milliseconds: 800),
         ),
       ],
     );
