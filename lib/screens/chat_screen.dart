@@ -8,7 +8,6 @@ import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/empty_state_view.dart';
-import '../widgets/loading_view.dart';
 import '../widgets/message_bubble.dart';
 import 'task_completion_screen.dart';
 import 'report_screen.dart';
@@ -26,6 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   String? _otherUserId;
+  bool _participantsLoaded = false;
 
   // User data for both participants
   UserModel? _myUser;
@@ -49,20 +49,32 @@ class _ChatScreenState extends State<ChatScreen> {
       final acceptedBy = data['acceptedBy'] as String?;
       final otherId = (postOwner == uid) ? acceptedBy : postOwner;
 
-      if (otherId == null) return;
+      if (otherId == null) {
+        if (mounted) setState(() => _participantsLoaded = true);
+        return;
+      }
 
-      // Fetch both users
-      final myDoc = await firestore.getUser(uid);
-      final otherDoc = await firestore.getUser(otherId);
+      // Set otherUserId immediately so streams can start
+      if (mounted) setState(() => _otherUserId = otherId);
+
+      // Fetch both users in parallel
+      final results = await Future.wait([
+        firestore.getUser(uid),
+        firestore.getUser(otherId),
+      ]);
 
       if (mounted) {
         setState(() {
-          _otherUserId = otherId;
-          if (myDoc.exists) _myUser = UserModel.fromFirestore(myDoc);
-          if (otherDoc.exists) _otherUser = UserModel.fromFirestore(otherDoc);
+          _participantsLoaded = true;
+          if (results[0].exists) _myUser = UserModel.fromFirestore(results[0]);
+          if (results[1].exists) {
+            _otherUser = UserModel.fromFirestore(results[1]);
+          }
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _participantsLoaded = true);
+    }
   }
 
   @override
@@ -90,13 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await firestore.sendMessage(widget.postId, message);
       analytics.logMessageSent();
       _textController.clear();
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
+      _scrollToBottom();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -107,6 +113,21 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         );
       }
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      // Use addPostFrameCallback so the list has time to lay out
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     }
   }
 
@@ -365,24 +386,24 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: uid == null
           ? const SizedBox.shrink()
-          : _otherUserId == null
-              ? const LoadingView(message: 'Loading chat...')
-              : _ChatBody(
-                  postId: widget.postId,
-                  uid: uid,
-                  otherUserId: _otherUserId!,
-                  myUser: _myUser,
-                  otherUser: _otherUser,
-                  textController: _textController,
-                  scrollController: _scrollController,
-                  onSend: _send,
-                  firestore: firestore,
-                ),
+          : _ChatBody(
+              postId: widget.postId,
+              uid: uid,
+              otherUserId: _otherUserId,
+              myUser: _myUser,
+              otherUser: _otherUser,
+              participantsLoaded: _participantsLoaded,
+              textController: _textController,
+              scrollController: _scrollController,
+              onSend: _send,
+              onScrollToBottom: _scrollToBottom,
+              firestore: firestore,
+            ),
     );
   }
 }
 
-/// The body of the chat, wrapped in StreamBuilders for real-time sharing prefs.
+/// The body of the chat — shows messages immediately, loads user info in parallel.
 class _ChatBody extends StatelessWidget {
   const _ChatBody({
     required this.postId,
@@ -390,20 +411,24 @@ class _ChatBody extends StatelessWidget {
     required this.otherUserId,
     required this.myUser,
     required this.otherUser,
+    required this.participantsLoaded,
     required this.textController,
     required this.scrollController,
     required this.onSend,
+    required this.onScrollToBottom,
     required this.firestore,
   });
 
   final String postId;
   final String uid;
-  final String otherUserId;
+  final String? otherUserId;
   final UserModel? myUser;
   final UserModel? otherUser;
+  final bool participantsLoaded;
   final TextEditingController textController;
   final ScrollController scrollController;
   final VoidCallback onSend;
+  final VoidCallback onScrollToBottom;
   final FirestoreService firestore;
 
   String _initial(UserModel? user) {
@@ -415,150 +440,162 @@ class _ChatBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to both users' sharing prefs in real time
+    // If we know both user IDs, listen to sharing prefs.
+    // Otherwise, show messages without sharing data.
+    if (otherUserId == null) {
+      // Still resolving participants — show messages anyway
+      return _buildMessagesColumn(context, {}, {});
+    }
+
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: firestore.getChatSharing(postId, uid),
       builder: (context, myShareSnap) {
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: firestore.getChatSharing(postId, otherUserId),
+          stream: firestore.getChatSharing(postId, otherUserId!),
           builder: (context, otherShareSnap) {
             final mySharing = myShareSnap.data?.data() ?? {};
             final otherSharing = otherShareSnap.data?.data() ?? {};
-
-            // Determine what the other user shares with me
-            final otherSharesName =
-                otherSharing['shareName'] as bool? ?? false;
-            final otherSharesPhoto =
-                otherSharing['sharePhoto'] as bool? ?? false;
-            final otherSharesPhone =
-                otherSharing['sharePhone'] as bool? ?? false;
-            final otherSharesLocation =
-                otherSharing['shareLocation'] as bool? ?? false;
-
-            return Column(
-              children: [
-                // Info bar showing what the other user has shared
-                _SharedInfoBar(
-                  otherUser: otherUser,
-                  otherSharesName: otherSharesName,
-                  otherSharesPhone: otherSharesPhone,
-                  otherSharesLocation: otherSharesLocation,
-                ),
-                Expanded(
-                  child: StreamBuilder(
-                    stream: firestore.getMessages(postId),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return const ErrorView(
-                          message:
-                              'Could not load messages. Check your connection.',
-                        );
-                      }
-                      if (!snapshot.hasData) {
-                        return const LoadingView(
-                            message: 'Loading messages...');
-                      }
-                      final docs = snapshot.data!.docs;
-                      final messages = docs
-                          .map((d) => MessageModel.fromFirestore(d))
-                          .toList();
-
-                      if (messages.isEmpty) {
-                        return const EmptyStateView(
-                          icon: Icons.chat_bubble_outline,
-                          title: 'No messages yet',
-                          subtitle: 'Say hello!',
-                        );
-                      }
-
-                      return ListView.builder(
-                        controller: scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: messages.length,
-                        itemBuilder: (context, i) {
-                          final msg = messages[i];
-                          // System messages
-                          if (msg.senderId == 'system') {
-                            return Center(
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .errorContainer,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  msg.text,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onErrorContainer,
-                                      ),
-                                ),
-                              ),
-                            );
-                          }
-
-                          final isMe = msg.senderId == uid;
-                          final senderUser = isMe ? myUser : otherUser;
-                          final senderSharing =
-                              isMe ? mySharing : otherSharing;
-                          final sharesPhoto =
-                              isMe ? (mySharing['sharePhoto'] as bool? ?? false)
-                                  : otherSharesPhoto;
-
-                          return MessageBubble(
-                            message: msg,
-                            isMe: isMe,
-                            initial: _initial(senderUser),
-                            profilePicUrl: sharesPhoto
-                                ? senderUser?.profilePic
-                                : null,
-                            senderName: (senderSharing['shareName']
-                                        as bool? ??
-                                    false)
-                                ? senderUser?.name
-                                : null,
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: textController,
-                          decoration: const InputDecoration(
-                            hintText: 'Message',
-                            border: OutlineInputBorder(),
-                          ),
-                          onSubmitted: (_) => onSend(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
-                        onPressed: onSend,
-                        icon: const Icon(Icons.send),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
+            return _buildMessagesColumn(context, mySharing, otherSharing);
           },
         );
       },
+    );
+  }
+
+  Widget _buildMessagesColumn(
+    BuildContext context,
+    Map<String, dynamic> mySharing,
+    Map<String, dynamic> otherSharing,
+  ) {
+    final otherSharesName = otherSharing['shareName'] as bool? ?? false;
+    final otherSharesPhoto = otherSharing['sharePhoto'] as bool? ?? false;
+    final otherSharesPhone = otherSharing['sharePhone'] as bool? ?? false;
+    final otherSharesLocation =
+        otherSharing['shareLocation'] as bool? ?? false;
+
+    return Column(
+      children: [
+        _SharedInfoBar(
+          otherUser: otherUser,
+          otherSharesName: otherSharesName,
+          otherSharesPhone: otherSharesPhone,
+          otherSharesLocation: otherSharesLocation,
+        ),
+        Expanded(
+          child: StreamBuilder(
+            stream: firestore.getMessages(postId),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const ErrorView(
+                  message:
+                      'Could not load messages. Check your connection.',
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              final docs = snapshot.data!.docs;
+              final messages = docs
+                  .map((d) => MessageModel.fromFirestore(d))
+                  .toList();
+
+              if (messages.isEmpty) {
+                return const EmptyStateView(
+                  icon: Icons.chat_bubble_outline,
+                  title: 'No messages yet',
+                  subtitle: 'Say hello!',
+                );
+              }
+
+              // Auto-scroll to bottom when new messages arrive
+              onScrollToBottom();
+
+              return ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: messages.length,
+                itemBuilder: (context, i) {
+                  final msg = messages[i];
+                  // System messages
+                  if (msg.senderId == 'system') {
+                    return Center(
+                      child: Container(
+                        margin:
+                            const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .errorContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          msg.text,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onErrorContainer,
+                              ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final isMe = msg.senderId == uid;
+                  final senderUser = isMe ? myUser : otherUser;
+                  final senderSharing =
+                      isMe ? mySharing : otherSharing;
+                  final sharesPhoto = isMe
+                      ? (mySharing['sharePhoto'] as bool? ?? false)
+                      : otherSharesPhoto;
+
+                  return MessageBubble(
+                    message: msg,
+                    isMe: isMe,
+                    initial: _initial(senderUser),
+                    profilePicUrl: sharesPhoto
+                        ? senderUser?.profilePic
+                        : null,
+                    senderName: (senderSharing['shareName']
+                                as bool? ??
+                            false)
+                        ? senderUser?.name
+                        : null,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: textController,
+                  decoration: const InputDecoration(
+                    hintText: 'Message',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => onSend(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: onSend,
+                icon: const Icon(Icons.send),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
