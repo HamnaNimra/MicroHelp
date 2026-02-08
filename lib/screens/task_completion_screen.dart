@@ -132,14 +132,18 @@ class TaskCompletionScreen extends StatelessWidget {
                                 context.read<AnalyticsService>().logTaskCompleted();
                                 // Check badges for the helper
                                 if (post.acceptedBy != null) {
-                                  final newBadges = await firestore
-                                      .checkAndAwardBadges(post.acceptedBy!);
-                                  if (context.mounted && newBadges.isNotEmpty) {
-                                    final analytics = context.read<AnalyticsService>();
-                                    for (final badge in newBadges) {
-                                      analytics.logBadgeEarned(badgeId: badge.id);
+                                  try {
+                                    final newBadges = await firestore
+                                        .checkAndAwardBadges(post.acceptedBy!);
+                                    if (context.mounted && newBadges.isNotEmpty) {
+                                      final analytics = context.read<AnalyticsService>();
+                                      for (final badge in newBadges) {
+                                        analytics.logBadgeEarned(badgeId: badge.id);
+                                      }
+                                      await _showBadgeEarnedDialog(context, newBadges);
                                     }
-                                    await _showBadgeEarnedDialog(context, newBadges);
+                                  } catch (_) {
+                                    // Badge check is best-effort; don't block completion
                                   }
                                 }
                                 if (context.mounted) {
@@ -151,11 +155,12 @@ class TaskCompletionScreen extends StatelessWidget {
                                     ),
                                   );
                                 }
-                              } catch (_) {
+                              } catch (e) {
+                                debugPrint('approveCompletion error: $e');
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Failed. Check your connection and try again.'),
+                                      content: Text('Failed: $e'),
                                       backgroundColor: Theme.of(context).colorScheme.error,
                                     ),
                                   );
