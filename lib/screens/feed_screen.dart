@@ -214,7 +214,10 @@ class _FeedScreenState extends State<FeedScreen> {
               stream: firestore.getActivePosts(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const LoadingView(message: 'Loading posts...');
+                  return const ShimmerLoadingList(
+                    itemCount: 5,
+                    type: ShimmerListType.postCard,
+                  );
                 }
                 if (snapshot.hasError) {
                   return ErrorView(
