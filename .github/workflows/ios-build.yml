@@ -1,9 +1,9 @@
-name: MicroHelp iOS Build
+name: MicroHelp iOS CI Build
 
 on:
   push:
     branches:
-      - engage_widgets   # replace with your branch
+      - engage_widgets  # replace with your branch
   workflow_dispatch:
 
 jobs:
@@ -11,46 +11,52 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Flutter
+      # 2️⃣ Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
       # 3️⃣ Get Flutter packages
-      - name: Get Flutter packages
+      - name: Get dependencies
         run: flutter pub get
 
-      # 4️⃣ Generate iOS folder (CI-ready)
-      - name: Generate iOS folder
+      # 4️⃣ Generate missing iOS folder & files
+      - name: Generate iOS folder if missing
         run: flutter create .
 
-      # 5️⃣ Ensure CocoaPods installed
+      # 5️⃣ Install CocoaPods
       - name: Install CocoaPods
         run: sudo gem install cocoapods
 
-      # 6️⃣ Update iOS deployment target to 15.0
+      # 6️⃣ Ensure deployment target is iOS 15
       - name: Update iOS deployment target
         run: |
-          sed -i '' "s/platform :ios, '9.0'/platform :ios, '15.0'/g" ios/Podfile || true
+          if [ -f ios/Podfile ]; then
+            sed -i '' "s/platform :ios, '9.0'/platform :ios, '15.0'/g" ios/Podfile || true
+          fi
 
       # 7️⃣ Install iOS dependencies
-      - name: Install iOS dependencies
+      - name: Install iOS pods
         run: |
           cd ios
-          pod install --repo-update
+          pod install --repo-update || true
           cd ..
 
-      # 8️⃣ Build unsigned IPA
+      # 8️⃣ Fix GeneratedPluginRegistrant
+      - name: Regenerate plugin registrant
+        run: flutter pub run build_runner build --delete-conflicting-outputs || true
+
+      # 9️⃣ Build unsigned IPA
       - name: Build unsigned IPA
         run: flutter build ipa --no-codesign
 
-      # 9️⃣ Upload IPA as GitHub artifact
-      - name: Upload IPA artifact
+      # 🔟 Upload IPA as artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: microhelp-unsigned-ipa
