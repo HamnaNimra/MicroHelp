@@ -30,21 +30,16 @@ jobs:
         run: flutter create .
 
       # 5️⃣ Create Podfile dynamically (iOS 15)
-      - name: Create Podfile for iOS
+      - name: Create minimal Podfile for iOS
         run: |
           mkdir -p ios
           cat > ios/Podfile <<EOL
           platform :ios, '15.0'
           use_frameworks!
 
-          flutter_root = File.expand_path('../Flutter', __dir__)
-          load File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb')
-
           target 'Runner' do
-            install_all_flutter_pods(File.dirname(File.realpath(__FILE__)))
           end
           EOL
-
 
       # 6️⃣ Install CocoaPods
       - name: Install CocoaPods dependencies
