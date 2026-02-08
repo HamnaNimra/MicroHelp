@@ -169,14 +169,16 @@ class _FeedScreenState extends State<FeedScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                          'Show local posts within ${_localRadiusKm.toStringAsFixed(0)} km'),
+                          'Show local posts within ${_localRadiusKm < 1 ? '${(_localRadiusKm * 1000).toStringAsFixed(0)} m' : '${_localRadiusKm.toStringAsFixed(0)} km'}'),
                     ),
                     Slider(
                       value: _localRadiusKm,
-                      min: 1,
+                      min: 0.5,
                       max: 50,
-                      divisions: 49,
-                      label: '${_localRadiusKm.toStringAsFixed(0)} km',
+                      divisions: 99,
+                      label: _localRadiusKm < 1
+                          ? '${(_localRadiusKm * 1000).toStringAsFixed(0)} m'
+                          : '${_localRadiusKm.toStringAsFixed(0)} km',
                       onChanged: (v) {
                         setSheetState(() => _localRadiusKm = v);
                         setState(() => _localRadiusKm = v);
