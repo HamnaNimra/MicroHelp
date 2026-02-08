@@ -259,9 +259,9 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create post. Check your connection and try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to create post. Check your connection and try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
