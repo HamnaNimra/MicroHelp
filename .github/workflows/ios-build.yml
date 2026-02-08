@@ -1,4 +1,4 @@
-name: MicroHelp iOS Hot-Reload + Google Drive
+name: MicroHelp iOS Hot-Reload 
 
 on:
   push:
@@ -66,11 +66,3 @@ jobs:
         with:
           name: microhelp-hot-reload-ipa
           path: build/ipa/app-${{ github.run_number }}.ipa
-
-      # 🔟 Upload IPA to Google Drive
-      - name: Upload to Google Drive
-        uses: gdrive-org/gdrive-upload-action@v1
-        with:
-          service_account_json: ${{ secrets.GDRIVE_JSON }}
-          folder_id: '1gufmCZ9VWuytvNYq9tC3hwrRah598rEH'
-          file: build/ipa/app-${{ github.run_number }}.ipa
