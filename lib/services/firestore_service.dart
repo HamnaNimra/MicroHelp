@@ -77,14 +77,15 @@ class FirestoreService {
     if (helperId != null) {
       final userRef = _firestore.collection('users').doc(helperId);
       await _firestore.runTransaction((tx) async {
+        // All reads must come before any writes in a transaction
         final post = await tx.get(postRef);
+        final userSnap = await tx.get(userRef);
         if (post.data()?['completed'] == true) return;
+        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
         tx.update(postRef, {
           'completed': true,
           'completionRequestedBy': FieldValue.delete(),
         });
-        final userSnap = await tx.get(userRef);
-        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
         tx.update(userRef, {'trustScore': current + 1});
       });
     } else {
@@ -110,14 +111,15 @@ class FirestoreService {
     if (isOwner && helperId != null) {
       final userRef = _firestore.collection('users').doc(helperId);
       await _firestore.runTransaction((tx) async {
+        // All reads must come before any writes in a transaction
         final post = await tx.get(postRef);
+        final userSnap = await tx.get(userRef);
         if (post.data()?['completed'] == true) return;
+        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
         tx.update(postRef, {
           'completed': true,
           'completionRequestedBy': FieldValue.delete(),
         });
-        final userSnap = await tx.get(userRef);
-        final current = (userSnap.data()?['trustScore'] as int?) ?? 0;
         tx.update(userRef, {'trustScore': current + 1});
       });
     } else {
