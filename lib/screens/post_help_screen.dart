@@ -327,14 +327,16 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('Radius: ${_radiusKm.toStringAsFixed(0)} km'),
+                child: Text('Radius: ${_radiusKm < 1 ? '${(_radiusKm * 1000).toStringAsFixed(0)} m' : '${_radiusKm.toStringAsFixed(0)} km'}'),
               ),
               Slider(
                 value: _radiusKm,
-                min: 1,
+                min: 0.5,
                 max: 50,
-                divisions: 49,
-                label: '${_radiusKm.toStringAsFixed(0)} km',
+                divisions: 99,
+                label: _radiusKm < 1
+                    ? '${(_radiusKm * 1000).toStringAsFixed(0)} m'
+                    : '${_radiusKm.toStringAsFixed(0)} km',
                 onChanged: (v) => setState(() => _radiusKm = v),
               ),
               const SizedBox(height: 8),
