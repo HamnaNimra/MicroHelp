@@ -187,17 +187,19 @@ class _ChatTile extends StatelessWidget {
     final Color leadingColor;
     final String subtitle;
 
+    final cs = Theme.of(context).colorScheme;
+
     if (post.completed) {
       leadingIcon = Icons.check_circle;
-      leadingColor = Colors.grey;
+      leadingColor = cs.outline;
       subtitle = isHelping ? 'Completed — you helped' : 'Completed — your post';
     } else if (post.completionRequestedBy != null) {
       leadingIcon = Icons.hourglass_top;
-      leadingColor = Colors.orange;
+      leadingColor = cs.tertiary;
       subtitle = isHelping ? 'You\'re helping — approval pending' : 'Your post — approval pending';
     } else {
       leadingIcon = Icons.chat_bubble;
-      leadingColor = Colors.blue;
+      leadingColor = cs.primary;
       subtitle = isHelping ? 'You\'re helping' : 'Your post — chat';
     }
 
