@@ -5,30 +5,30 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Post type colors
-  static const Color requestLight = Color(0xFFE65100);
-  static const Color requestDark = Color(0xFFFFAB40);
-  static const Color offerLight = Color(0xFF2E7D32);
-  static const Color offerDark = Color(0xFF69F0AE);
+  // Post type colors — vibrant and distinct
+  static const Color requestLight = Color.fromARGB(255, 118, 18, 141); // violet
+  static const Color requestDark = Color.fromARGB(255, 170, 9, 106);
+  static const Color offerLight = Color.fromARGB(255, 2, 43, 78); // blue
+  static const Color offerDark = Color.fromARGB(255, 22, 84, 154);
 
   // Status colors
-  static const Color activeLight = Color(0xFF1565C0);
-  static const Color activeDark = Color(0xFF82B1FF);
-  static const Color pendingLight = Color(0xFFE65100);
-  static const Color pendingDark = Color(0xFFFFAB40);
-  static const Color completedLight = Color(0xFF757575);
-  static const Color completedDark = Color(0xFF9E9E9E);
+  static const Color activeLight = Color(0xFF3B82F6); // bright blue
+  static const Color activeDark = Color(0xFF93C5FD);
+  static const Color pendingLight = Color(0xFFDB7706); // amber
+  static const Color pendingDark = Color(0xFFFBBF24);
+  static const Color completedLight = Color(0xFF6B7280); // cool gray
+  static const Color completedDark = Color(0xFF9CA3AF);
 
-  // Badge colors
-  static const Color badgeEarnedLight = Color(0xFFFFA000);
-  static const Color badgeEarnedDark = Color(0xFFFFD54F);
-  static const Color badgeUnearnedLight = Color(0xFF9E9E9E);
-  static const Color badgeUnearnedDark = Color(0xFF616161);
+  // Badge colors — golden & warm
+  static const Color badgeEarnedLight = Color(0xFFD97706); // warm amber
+  static const Color badgeEarnedDark = Color(0xFFFBBF24);
+  static const Color badgeUnearnedLight = Color(0xFF9CA3AF);
+  static const Color badgeUnearnedDark = Color(0xFF4B5563);
 
-  // Password strength (universal — semantic meaning is clear)
-  static const Color strengthWeak = Color(0xFFD32F2F);
-  static const Color strengthMedium = Color(0xFFF57C00);
-  static const Color strengthStrong = Color(0xFF388E3C);
+  // Password strength (universal)
+  static const Color strengthWeak = Color(0xFFEF4444);
+  static const Color strengthMedium = Color(0xFFF59E0B);
+  static const Color strengthStrong = Color(0xFF10B981);
 
   static Color request(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
@@ -70,12 +70,20 @@ class AppColors {
 class AppTheme {
   AppTheme._();
 
-  static const _seedColor = Color(0xFF00897B); // teal 600
+  // Vibrant violet-blue seed — fun and modern
+  static const _seedColor = Color(0xFF7C3AED); // violet 600
 
   static ThemeData light() {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: _seedColor,
       brightness: Brightness.light,
+      // Override key roles for extra personality
+      primary: const Color(0xFF7C3AED),
+      secondary: const Color(0xFFEC4899), // pink accent
+      tertiary: const Color(0xFFF59E0B), // warm amber accent
+      primaryContainer: const Color(0xFFEDE9FE), // soft violet wash
+      secondaryContainer: const Color(0xFFFCE7F3), // soft pink wash
+      tertiaryContainer: const Color(0xFFFEF3C7), // soft amber wash
     );
     return _buildTheme(colorScheme);
   }
@@ -84,6 +92,12 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: _seedColor,
       brightness: Brightness.dark,
+      primary: const Color(0xFFA78BFA), // lighter violet
+      secondary: const Color(0xFFF472B6), // lighter pink
+      tertiary: const Color(0xFFFBBF24), // bright amber
+      primaryContainer: const Color(0xFF3B1E8E), // deep violet
+      secondaryContainer: const Color(0xFF831843), // deep pink
+      tertiaryContainer: const Color(0xFF78350F), // deep amber
     );
     return _buildTheme(colorScheme);
   }
