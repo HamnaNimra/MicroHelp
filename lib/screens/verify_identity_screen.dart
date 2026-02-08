@@ -192,9 +192,9 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
           _qrSessionId = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Selfie received from your phone!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Selfie received from your phone!'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
@@ -220,9 +220,9 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
       });
       if (expired) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('QR session expired. Please try again.'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('QR session expired. Please try again.'),
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
           ),
         );
       }
