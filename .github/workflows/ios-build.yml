@@ -1,13 +1,13 @@
-name: MicroHelp iOS Hot-Reload + Google Drive
+name: MicroHelp iOS Build
 
 on:
   push:
     branches:
-      - dev-ios
+      - engage_widgets   # replace with your branch
   workflow_dispatch:
 
 jobs:
-  hot-reload-ios:
+  build-ios:
     runs-on: macos-latest
 
     steps:
@@ -16,59 +16,42 @@ jobs:
         uses: actions/checkout@v4
 
       # 2️⃣ Setup Flutter
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      # 3️⃣ Cache Pub packages for faster builds
-      - name: Cache Pub packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.pub-cache
-          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
-          restore-keys: |
-            pub-cache-
-
-      # 4️⃣ Precache Flutter iOS artifacts
-      - name: Precache Flutter iOS artifacts
-        run: flutter precache --ios
-
-      # 5️⃣ Get Flutter dependencies
+      # 3️⃣ Get Flutter packages
       - name: Get Flutter packages
         run: flutter pub get
 
-      # 6️⃣ Ensure iOS folder exists
-      - name: Ensure iOS folder
+      # 4️⃣ Generate iOS folder (CI-ready)
+      - name: Generate iOS folder
         run: flutter create .
 
-      # 7️⃣ Create Podfile with iOS 15 target to fix Firebase plugin errors
-      - name: Create Podfile for iOS
+      # 5️⃣ Ensure CocoaPods installed
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods
+
+      # 6️⃣ Update iOS deployment target to 15.0
+      - name: Update iOS deployment target
         run: |
-          mkdir -p ios
-          cat > ios/Podfile <<EOL
-          platform :ios, '15.0'
-          use_frameworks!
+          sed -i '' "s/platform :ios, '9.0'/platform :ios, '15.0'/g" ios/Podfile || true
 
-          target 'Runner' do
-          end
-          EOL
+      # 7️⃣ Install iOS dependencies
+      - name: Install iOS dependencies
+        run: |
+          cd ios
+          pod install --repo-update
+          cd ..
 
-      # 8️⃣ Build unsigned IPA (fixes cloud_firestore + other plugins)
+      # 8️⃣ Build unsigned IPA
       - name: Build unsigned IPA
         run: flutter build ipa --no-codesign
 
-      # 9️⃣ Package IPA artifact
-      - name: Package IPA
-        run: |
-          mkdir -p build/ipa
-          cp -r build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app build/ipa/Runner.app
-          cd build/ipa
-          zip -r app-${{ github.run_number }}.ipa Runner.app
-
-      # 🔟 Upload IPA to GitHub artifacts
+      # 9️⃣ Upload IPA as GitHub artifact
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: microhelp-hot-reload-ipa
-          path: build/ipa/app-${{ github.run_number }}.ipa
+          name: microhelp-unsigned-ipa
+          path: build/ios/ipa/*.ipa
