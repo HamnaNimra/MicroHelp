@@ -341,7 +341,7 @@ class ProfileScreen extends StatelessWidget {
                         title: 'View tutorial',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const OnboardingScreen(),
+                            builder: (_) => const OnboardingScreen(isReplay: true),
                           ),
                         ),
                       ),
