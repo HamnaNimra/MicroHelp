@@ -7,13 +7,13 @@ class AppColors {
 
   // Post type colors — vibrant and distinct
   static const Color requestLight = Color.fromARGB(255, 118, 18, 141); // violet
-  static const Color requestDark = Color.fromARGB(255, 170, 9, 106);
-  static const Color offerLight = Color.fromARGB(255, 2, 43, 78); // blue
-  static const Color offerDark = Color.fromARGB(255, 22, 84, 154);
+  static const Color requestDark = Color.fromARGB(255, 146, 6, 90); // magenta
+  static const Color offerLight = Color.fromARGB(255, 3, 85, 123); // cyan
+  static const Color offerDark = Color.fromARGB(255, 37, 156, 180); // teal
 
   // Status colors
   static const Color activeLight = Color(0xFF3B82F6); // bright blue
-  static const Color activeDark = Color(0xFF93C5FD);
+  static const Color activeDark = Color(0xFF93C5FD); // light blue
   static const Color pendingLight = Color(0xFFDB7706); // amber
   static const Color pendingDark = Color(0xFFFBBF24);
   static const Color completedLight = Color(0xFF6B7280); // cool gray
