@@ -55,9 +55,9 @@ class _EditPostScreenState extends State<EditPostScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save. Check your connection.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Failed to save. Check your connection.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -79,7 +79,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
