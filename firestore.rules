@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
-      // Allow any authenticated user to read basic profile info
+      // Any authenticated user can read profiles (needed for chat participant info)
       allow read: if request.auth != null;
+      // Users can write their own profile
+      allow write: if request.auth != null && request.auth.uid == userId;
       // Allow trust score increment by other users (for task completion)
       allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trustScore'])
