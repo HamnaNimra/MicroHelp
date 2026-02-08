@@ -27,9 +27,6 @@ class PostCard extends StatelessWidget {
     return TapScale(
       onTap: onTap,
       child: Card(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
         child: IntrinsicHeight(
           child: Row(
             children: [
