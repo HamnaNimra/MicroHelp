@@ -51,9 +51,9 @@ jobs:
           cd ios
           pod install --repo-update
 
-      # 8️⃣ Build iOS release (unsigned)
+      # 8️⃣ Build iOS release 
       - name: Build iOS release
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios 
 
       # 9️⃣ Package IPA
       - name: Package IPA
