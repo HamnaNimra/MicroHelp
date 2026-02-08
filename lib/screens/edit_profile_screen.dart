@@ -363,7 +363,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
               child: deleting
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
