@@ -34,7 +34,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 
-	<!-- Launch & UI -->
+	<!-- UI -->
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 
@@ -54,46 +54,42 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!-- ========================= -->
-	<!-- LOCATION PERMISSIONS -->
-	<!-- ========================= -->
+	<!-- ================= LOCATION ================= -->
 
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>MicroHelp uses your location to show nearby help requests and people who can help.</string>
+	<string>MicroHelp uses your location to show nearby help requests.</string>
 
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>MicroHelp uses your location to keep help requests accurate even when the app is not open.</string>
 
-	<!-- Background location support -->
+	<!-- Precise location (iOS 14+) -->
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseLocation</key>
+		<string>MicroHelp needs precise location to accurately match nearby help.</string>
+	</dict>
+
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
 		<string>fetch</string>
 	</array>
 
-	<!-- ========================= -->
-	<!-- CAMERA & PHOTOS -->
-	<!-- ========================= -->
+	<!-- ================= MEDIA ================= -->
 
 	<key>NSCameraUsageDescription</key>
-	<string>MicroHelp needs camera access so you can take photos for help requests.</string>
+	<string>MicroHelp lets you take photos for help requests.</string>
 
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>MicroHelp needs photo access to upload images for help requests.</string>
+	<string>MicroHelp lets you upload images for help requests.</string>
 
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>MicroHelp needs permission to save images to your photo library.</string>
-
-	<!-- ========================= -->
-	<!-- MICROPHONE -->
-	<!-- ========================= -->
+	<string>MicroHelp can save images to your photo library.</string>
 
 	<key>NSMicrophoneUsageDescription</key>
-	<string>MicroHelp uses the microphone for voice messages and audio features.</string>
+	<string>MicroHelp uses the microphone for voice features.</string>
 
-	<!-- ========================= -->
-	<!-- NETWORK SECURITY -->
-	<!-- ========================= -->
+	<!-- ================= NETWORK ================= -->
 
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -101,9 +97,7 @@
 		<false/>
 	</dict>
 
-	<!-- ========================= -->
-	<!-- FIREBASE / GOOGLE SIGN-IN -->
-	<!-- ========================= -->
+	<!-- ================= FIREBASE / GOOGLE ================= -->
 
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -117,7 +111,6 @@
 		</dict>
 	</array>
 
-	<!-- Leave Firebase delegate proxy ON unless you manually handle notifications -->
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
 
