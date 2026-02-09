@@ -1,0 +1,80 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches:
+      - engage_widgets
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+
+    - name: Get Flutter Dependencies
+      run: |
+        flutter precache --ios
+        flutter pub get
+
+    - name: Repair iOS Toolchain
+      run: |
+        # 1. Clear the Windows-generated folder
+        rm -rf ios
+
+        # 2. Recreate iOS folder on the Mac runner
+        flutter create . --platforms=ios
+
+        # 3. Restore Config Files
+        if [ -d "ios_config" ]; then
+          cp ios_config/GoogleService-Info.plist ios/Runner/ 2>/dev/null || echo "No GoogleService-Info found"
+          cp ios_config/Info.plist ios/Runner/ 2>/dev/null || echo "No Info.plist found"
+        fi
+
+        # 4. Force Deployment Target to 15.0
+        sed -i '' "s/^# platform :ios, .*/platform :ios, '15.0'/" ios/Podfile
+
+        # 5. Build the bridge and install Pods
+        flutter build ios --config-only --no-codesign
+        cd ios
+        pod install --repo-update
+        cd ..
+
+    - name: Build and Package Unsigned IPA
+      run: |
+        # 1. Build the actual iOS binary
+        flutter build ios --release --no-codesign
+        
+        # 2. Create the Payload structure for the IPA
+        mkdir -p Payload
+        cp -r build/ios/iphoneos/Runner.app Payload/
+        
+        # 3. Get version from pubspec.yaml for the filename
+        APP_VERSION=$(grep 'version: ' pubspec.yaml | sed 's/version: //')
+        echo "Packaging version $APP_VERSION"
+        
+        # 4. Zip into an IPA file
+        zip -qq -r "microhelp-$APP_VERSION-unsigned.ipa" Payload
+        
+        # 5. Move it to a predictable location for the uploader
+        mkdir -p build/ios/ipa
+        mv "microhelp-$APP_VERSION-unsigned.ipa" build/ios/ipa/final_app.ipa
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: microhelp-ipa
+        path: build/ios/ipa/final_app.ipa
+
+    - name: Upload Generated iOS Folder
+      uses: actions/upload-artifact@v4
+      with:
+        name: generated-ios-folder
+        path: ios/
+        include-hidden-files: true

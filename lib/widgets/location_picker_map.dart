@@ -152,58 +152,80 @@ class _LocationPickerMapState extends State<LocationPickerMap> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: _selectedPosition,
-                initialZoom: 14,
-                onTap: _onMapTap,
-              ),
+            child: Stack(
               children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.microhelp.app',
-                  maxZoom: 19,
-                ),
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: _selectedPosition,
-                      radius: widget.radiusKm * 1000,
-                      useRadiusInMeter: true,
-                      color:
-                          Theme.of(context).colorScheme.primary.withAlpha(40),
-                      borderColor: Theme.of(context).colorScheme.primary,
-                      borderStrokeWidth: 2,
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _selectedPosition,
+                    initialZoom: 14,
+                    onTap: _onMapTap,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.microhelp.app',
+                      maxZoom: 19,
                     ),
-                  ],
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _selectedPosition,
-                      width: 40,
-                      height: 40,
-                      child: Icon(
-                        Icons.location_pin,
-                        size: 40,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    if (gpsLatLng != null && _showGpsWarning)
-                      Marker(
-                        point: gpsLatLng,
-                        width: 32,
-                        height: 32,
-                        child: Icon(
-                          Icons.my_location,
-                          size: 32,
-                          color: Theme.of(context).colorScheme.error,
+                    CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: _selectedPosition,
+                          radius: widget.radiusKm * 1000,
+                          useRadiusInMeter: true,
+                          color:
+                              Theme.of(context).colorScheme.primary.withAlpha(40),
+                          borderColor: Theme.of(context).colorScheme.primary,
+                          borderStrokeWidth: 2,
                         ),
-                      ),
+                      ],
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _selectedPosition,
+                          width: 40,
+                          height: 40,
+                          child: Icon(
+                            Icons.location_pin,
+                            size: 40,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        if (gpsLatLng != null && _showGpsWarning)
+                          Marker(
+                            point: gpsLatLng,
+                            width: 32,
+                            height: 32,
+                            child: Icon(
+                              Icons.my_location,
+                              size: 32,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
+                // Recenter to my location button
+                if (gpsLatLng != null)
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: FloatingActionButton.small(
+                      heroTag: 'recenter_gps',
+                      onPressed: () {
+                        setState(() => _selectedPosition = gpsLatLng);
+                        _mapController.move(gpsLatLng, 14);
+                        widget.onLocationChanged(
+                          GeoPoint(gpsLatLng.latitude, gpsLatLng.longitude),
+                        );
+                      },
+                      tooltip: 'Recenter to my location',
+                      child: const Icon(Icons.my_location),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -6,7 +6,7 @@ import '../models/post_model.dart';
 import '../constants/badges.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
-import '../theme/app_theme.dart';
+import '../widgets/badge_celebration.dart';
 import '../widgets/error_view.dart';
 import '../widgets/loading_view.dart';
 
@@ -19,26 +19,7 @@ class TaskCompletionScreen extends StatelessWidget {
     BuildContext context,
     List<BadgeDefinition> badges,
   ) {
-    return showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Badge earned!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: badges.map((b) => ListTile(
-            leading: Icon(b.icon, color: AppColors.badgeEarned(context), size: 32),
-            title: Text(b.name),
-            subtitle: Text(b.description),
-          )).toList(),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Awesome!'),
-          ),
-        ],
-      ),
-    );
+    return showBadgeCelebration(context, badges);
   }
 
   @override
@@ -151,14 +132,18 @@ class TaskCompletionScreen extends StatelessWidget {
                                 context.read<AnalyticsService>().logTaskCompleted();
                                 // Check badges for the helper
                                 if (post.acceptedBy != null) {
-                                  final newBadges = await firestore
-                                      .checkAndAwardBadges(post.acceptedBy!);
-                                  if (context.mounted && newBadges.isNotEmpty) {
-                                    final analytics = context.read<AnalyticsService>();
-                                    for (final badge in newBadges) {
-                                      analytics.logBadgeEarned(badgeId: badge.id);
+                                  try {
+                                    final newBadges = await firestore
+                                        .checkAndAwardBadges(post.acceptedBy!);
+                                    if (context.mounted && newBadges.isNotEmpty) {
+                                      final analytics = context.read<AnalyticsService>();
+                                      for (final badge in newBadges) {
+                                        analytics.logBadgeEarned(badgeId: badge.id);
+                                      }
+                                      await _showBadgeEarnedDialog(context, newBadges);
                                     }
-                                    await _showBadgeEarnedDialog(context, newBadges);
+                                  } catch (_) {
+                                    // Badge check is best-effort; don't block completion
                                   }
                                 }
                                 if (context.mounted) {
@@ -170,11 +155,12 @@ class TaskCompletionScreen extends StatelessWidget {
                                     ),
                                   );
                                 }
-                              } catch (_) {
+                              } catch (e) {
+                                debugPrint('approveCompletion error: $e');
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Failed. Check your connection and try again.'),
+                                      content: Text('Failed: $e'),
                                       backgroundColor: Theme.of(context).colorScheme.error,
                                     ),
                                   );

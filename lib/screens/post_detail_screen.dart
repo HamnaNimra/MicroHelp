@@ -24,15 +24,27 @@ class PostDetailScreen extends StatefulWidget {
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   late Future<DocumentSnapshot<Map<String, dynamic>>> _future;
+  GeoPoint? _myLocation;
 
   @override
   void initState() {
     super.initState();
     _loadPost();
+    _loadMyLocation();
   }
 
   void _loadPost() {
     _future = context.read<FirestoreService>().getPost(widget.postId);
+  }
+
+  Future<void> _loadMyLocation() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final doc = await context.read<FirestoreService>().getUser(uid);
+      final loc = doc.data()?['location'] as GeoPoint?;
+      if (loc != null && mounted) setState(() => _myLocation = loc);
+    } catch (_) {}
   }
 
   Future<void> _blockUser(String postOwnerId) async {
@@ -254,6 +266,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               location: post.location!,
               radiusKm: post.radius,
               isGlobal: post.global,
+              myLocation: _myLocation,
             ),
             const SizedBox(height: 4),
             Text(

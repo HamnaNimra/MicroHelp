@@ -7,7 +7,8 @@ import '../services/preferences_service.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/error_view.dart';
 import '../widgets/first_time_tip_banner.dart';
-import '../widgets/loading_view.dart';
+import '../widgets/shimmer_loading.dart';
+import '../widgets/staggered_list_item.dart';
 import 'chat_screen.dart';
 
 /// Inbox = conversations (chats). Posts where you're in an active conversation
@@ -88,7 +89,10 @@ class _ChatsList extends StatelessWidget {
               );
             }
             if (!helpingSnapshot.hasData || !myPostsSnapshot.hasData) {
-              return const LoadingView(message: 'Loading...');
+              return const ShimmerLoadingList(
+                itemCount: 4,
+                type: ShimmerListType.chatTile,
+              );
             }
 
             final helpingDocs = helpingSnapshot.data!.docs;
@@ -133,10 +137,13 @@ class _ChatsList extends StatelessWidget {
                 itemCount: chatItems.length,
                 itemBuilder: (context, i) {
                   final item = chatItems[i];
-                  return _ChatTile(
-                    post: item.post,
-                    postId: item.postId,
-                    isHelping: item.isHelping,
+                  return StaggeredListItem(
+                    index: i,
+                    child: _ChatTile(
+                      post: item.post,
+                      postId: item.postId,
+                      isHelping: item.isHelping,
+                    ),
                   );
                 },
               );

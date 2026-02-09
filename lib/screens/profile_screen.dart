@@ -15,6 +15,7 @@ import 'badges_screen.dart';
 import 'onboarding_screen.dart';
 import 'verify_identity_screen.dart';
 import 'my_posts_screen.dart';
+import 'blocked_users_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, this.onNavigateToCreatePost});
@@ -341,7 +342,17 @@ class ProfileScreen extends StatelessWidget {
                         title: 'View tutorial',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const OnboardingScreen(),
+                            builder: (_) => const OnboardingScreen(isReplay: true),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _ProfileTile(
+                        icon: Icons.block,
+                        title: 'Blocked users',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const BlockedUsersScreen(),
                           ),
                         ),
                       ),

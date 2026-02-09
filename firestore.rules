@@ -2,14 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can read profiles (needed for chat participant info)
+      allow read: if request.auth != null;
+      // Users can write their own profile
       allow write: if request.auth != null && request.auth.uid == userId;
-      // Allow users to update their own fcmToken field
+      // Allow trust score increment by other users (for task completion)
       allow update: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trustScore'])
+        && request.resource.data.trustScore == resource.data.trustScore + 1;
       match /badges/{badgeId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null;
       }
     }
 
@@ -35,6 +37,16 @@ service cloud.firestore {
         || request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.acceptedBy
       );
       allow update, delete: if false;
+    }
+
+    match /messages/{postId}/sharing/{userId} {
+      // Users can read/write their own sharing preferences
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // The other chat participant can read sharing preferences
+      allow read: if request.auth != null && (
+        request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId
+        || request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.acceptedBy
+      );
     }
 
     match /verification_requests/{requestId} {

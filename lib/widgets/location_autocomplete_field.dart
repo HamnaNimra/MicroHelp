@@ -34,6 +34,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   OverlayEntry? _overlayEntry;
   final _focusNode = FocusNode();
   bool _suppressSuggestions = false;
+  bool _tappingSuggestion = false;
 
   @override
   void initState() {
@@ -52,7 +53,14 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      _removeOverlay();
+      // Delay removal so tap on suggestion has time to register.
+      // If a suggestion is being tapped, wait longer.
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted && !_focusNode.hasFocus && !_tappingSuggestion) {
+          _removeOverlay();
+        }
+        _tappingSuggestion = false;
+      });
     }
   }
 
@@ -156,7 +164,9 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                 itemBuilder: (context, index) {
                   final suggestion = _suggestions[index];
                   return InkWell(
+                    onTapDown: (_) => _tappingSuggestion = true,
                     onTap: () {
+                      _tappingSuggestion = false;
                       widget.controller.text = suggestion.shortName;
                       widget.controller.selection = TextSelection.collapsed(
                         offset: suggestion.shortName.length,
