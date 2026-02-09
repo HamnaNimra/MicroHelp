@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 import '../services/firestore_service.dart';
 import '../services/analytics_service.dart';
 import '../services/notification_service.dart';
+import '../utils/geo_utils.dart';
 import '../widgets/location_picker_map.dart';
 
 class PostHelpScreen extends StatefulWidget {
@@ -50,7 +50,7 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
   Future<void> _initLocation() async {
     setState(() => _loadingLocation = true);
 
-    // First, try to load saved location from Firestore as a quick fallback
+    // Load poster gender/age from Firestore profile
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       try {
@@ -59,127 +59,23 @@ class _PostHelpScreenState extends State<PostHelpScreen> {
             .doc(uid)
             .get();
         final data = doc.data();
-        final savedLocation = data?['location'] as GeoPoint?;
         _posterGender = data?['gender'] as String?;
         _posterAgeRange = data?['ageRange'] as String?;
-        if (savedLocation != null && mounted) {
-          setState(() {
-            _gpsLocation = savedLocation;
-            _selectedLocation = savedLocation;
-          });
-        }
       } catch (_) {}
     }
 
-    // Then try to get fresh GPS location
+    // Get location (handles permissions, rationale dialogs, and saves to Firestore)
+    if (!mounted) return;
     try {
-      var permission = await Geolocator.checkPermission();
-
-      if (permission == LocationPermission.denied) {
-        if (!mounted) return;
-        final shouldRequest = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.location_on, size: 40),
-            title: const Text('Share your location'),
-            content: const Text(
-              'We need your location to show your post to nearby neighbors. '
-              'Only your approximate area is shared — never your exact address.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Not now'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Allow location'),
-              ),
-            ],
-          ),
-        );
-        if (shouldRequest != true) return;
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        // If we already have a saved location, don't show the error dialog
-        if (_selectedLocation != null) return;
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.location_off, size: 40),
-            title: const Text('Location access needed'),
-            content: const Text(
-              'Location access was permanently denied. '
-              'Please enable it in your device Settings to post locally.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  Geolocator.openAppSettings();
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Open Settings'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        if (_selectedLocation != null) return;
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.location_off, size: 40),
-            title: const Text('Location services off'),
-            content: const Text(
-              'Please turn on location services to post locally.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  Geolocator.openLocationSettings();
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Open Settings'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      final pos = await Geolocator.getCurrentPosition();
-      final geoPoint = GeoPoint(pos.latitude, pos.longitude);
-      if (mounted) {
+      final loc = await getAndSaveUserLocation(context);
+      if (loc != null && mounted) {
         setState(() {
-          _gpsLocation = geoPoint;
-          _selectedLocation = geoPoint;
+          _gpsLocation = loc;
+          _selectedLocation = loc;
         });
       }
-
-      // Save fresh GPS location to user profile for future fallback
-      if (uid != null) {
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .update({'location': geoPoint}).catchError((_) {});
-      }
     } catch (_) {
-      // GPS failed — we may still have the saved location from above
+      // GPS failed — user can still pick location manually on the map
     } finally {
       if (mounted) setState(() => _loadingLocation = false);
     }

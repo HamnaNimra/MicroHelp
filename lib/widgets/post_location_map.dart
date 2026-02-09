@@ -9,15 +9,20 @@ class PostLocationMap extends StatelessWidget {
     required this.location,
     required this.radiusKm,
     this.isGlobal = false,
+    this.myLocation,
   });
 
   final GeoPoint location;
   final double radiusKm;
   final bool isGlobal;
+  final GeoPoint? myLocation;
 
   @override
   Widget build(BuildContext context) {
     final center = LatLng(location.latitude, location.longitude);
+    final myLatLng = myLocation != null
+        ? LatLng(myLocation!.latitude, myLocation!.longitude)
+        : null;
 
     return Container(
       height: 200,
@@ -65,6 +70,17 @@ class PostLocationMap extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
+                if (myLatLng != null)
+                  Marker(
+                    point: myLatLng,
+                    width: 32,
+                    height: 32,
+                    child: Icon(
+                      Icons.my_location,
+                      size: 32,
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                  ),
               ],
             ),
           ],

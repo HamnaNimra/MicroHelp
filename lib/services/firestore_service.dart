@@ -24,7 +24,10 @@ class FirestoreService {
         .snapshots();
   }
 
-  Future<DocumentSnapshot<Map<String, dynamic>>> getPost(String postId) async {
+  Future<DocumentSnapshot<Map<String, dynamic>>> getPost(String postId, {Source? source}) async {
+    if (source != null) {
+      return _posts.doc(postId).get(GetOptions(source: source));
+    }
     return _posts.doc(postId).get();
   }
 
@@ -195,8 +198,16 @@ class FirestoreService {
   }
 
   /// Gets a user document by ID.
-  Future<DocumentSnapshot<Map<String, dynamic>>> getUser(String userId) {
+  Future<DocumentSnapshot<Map<String, dynamic>>> getUser(String userId, {Source? source}) {
+    if (source != null) {
+      return _firestore.collection('users').doc(userId).get(GetOptions(source: source));
+    }
     return _firestore.collection('users').doc(userId).get();
+  }
+
+  /// Streams a user document for real-time updates (e.g. live location).
+  Stream<DocumentSnapshot<Map<String, dynamic>>> streamUser(String userId) {
+    return _firestore.collection('users').doc(userId).snapshots();
   }
 
   /// Checks trust score against badge thresholds and awards any new badges.
