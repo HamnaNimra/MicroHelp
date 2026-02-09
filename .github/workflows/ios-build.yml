@@ -71,3 +71,11 @@ jobs:
       with:
         name: microhelp-ipa
         path: build/ios/ipa/final_app.ipa
+        - name: Upload Generated iOS Folder
+        
+      uses: actions/upload-artifact@v4
+      with:
+        name: generated-ios-folder
+        path: ios/
+        # Optional: include hidden files like .gitignore or .xcconfig
+        include-hidden-files: true 
