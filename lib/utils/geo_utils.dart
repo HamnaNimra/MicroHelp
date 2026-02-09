@@ -4,8 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
-/// Calculates the distance in kilometers between two [GeoPoint]s
-/// using the Haversine formula.
+/// Distance in KM using Haversine formula
 double distanceKm(GeoPoint a, GeoPoint b) {
   const earthRadiusKm = 6371.0;
 
@@ -16,50 +15,48 @@ double distanceKm(GeoPoint a, GeoPoint b) {
   final sinLon = sin(dLon / 2);
 
   final h = sinLat * sinLat +
-      cos(_degToRad(a.latitude)) * cos(_degToRad(b.latitude)) * sinLon * sinLon;
+      cos(_degToRad(a.latitude)) *
+          cos(_degToRad(b.latitude)) *
+          sinLon *
+          sinLon;
 
   return 2 * earthRadiusKm * asin(sqrt(h));
 }
 
 double _degToRad(double deg) => deg * (pi / 180);
 
-/// Attempts to get the user's current location. If permission is already
-/// granted, silently fetches GPS. If not, shows a rationale dialog first.
-/// Returns the [GeoPoint] or null if unavailable.
-/// Also saves the location to the user's Firestore profile.
-Future<GeoPoint?> getAndSaveUserLocation(BuildContext context, {bool showRationale = true}) async {
-  // First check if we have a saved location in Firestore
+/// Gets user location, handles permissions, requests precise accuracy on iOS,
+/// and stores location in Firestore.
+/// Returns last known location if GPS unavailable.
+Future<GeoPoint?> getAndSaveUserLocation(
+  BuildContext context, {
+  bool showRationale = true,
+}) async {
   final uid = FirebaseAuth.instance.currentUser?.uid;
   GeoPoint? saved;
+
+  // Fetch previously saved location
   if (uid != null) {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       saved = doc.data()?['location'] as GeoPoint?;
     } catch (_) {}
   }
 
-  // Check current permission state
+  // Permission state
   var permission = await Geolocator.checkPermission();
 
-  // If already granted (always or while-in-use), just grab location
-  if (permission == LocationPermission.always ||
-      permission == LocationPermission.whileInUse) {
-    return _fetchAndSave(uid, saved);
-  }
-
-  // Permission denied — show rationale and request
   if (permission == LocationPermission.denied && showRationale) {
     if (!context.mounted) return saved;
+
     final shouldRequest = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.location_on, size: 40),
         title: const Text('Share your location'),
         content: const Text(
-          'We need your location to show your approximate area. '
+          'We use your location to show nearby help. '
           'Your exact address is never shared.',
         ),
         actions: [
@@ -69,11 +66,12 @@ Future<GeoPoint?> getAndSaveUserLocation(BuildContext context, {bool showRationa
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Allow location'),
+            child: const Text('Allow'),
           ),
         ],
       ),
     );
+
     if (shouldRequest != true) return saved;
     permission = await Geolocator.requestPermission();
   }
@@ -86,8 +84,8 @@ Future<GeoPoint?> getAndSaveUserLocation(BuildContext context, {bool showRationa
           icon: const Icon(Icons.location_off, size: 40),
           title: const Text('Location access needed'),
           content: const Text(
-            'Location access was permanently denied. '
-            'Please enable it in your device Settings.',
+            'Location access was turned off. '
+            'Please enable it in Settings.',
           ),
           actions: [
             TextButton(
@@ -108,7 +106,10 @@ Future<GeoPoint?> getAndSaveUserLocation(BuildContext context, {bool showRationa
     return saved;
   }
 
-  if (permission == LocationPermission.denied) return saved;
+  if (permission != LocationPermission.always &&
+      permission != LocationPermission.whileInUse) {
+    return saved;
+  }
 
   return _fetchAndSave(uid, saved);
 }
@@ -116,16 +117,30 @@ Future<GeoPoint?> getAndSaveUserLocation(BuildContext context, {bool showRationa
 Future<GeoPoint?> _fetchAndSave(String? uid, GeoPoint? fallback) async {
   try {
     if (!await Geolocator.isLocationServiceEnabled()) return fallback;
-    final pos = await Geolocator.getCurrentPosition();
+
+    // iOS precise location handling
+    final accuracy = await Geolocator.getLocationAccuracy();
+    if (accuracy == LocationAccuracyStatus.reduced) {
+      await Geolocator.requestTemporaryFullAccuracy(
+        purposeKey: 'PreciseLocation',
+      );
+    }
+
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+      timeLimit: const Duration(seconds: 10),
+    );
+
     final geoPoint = GeoPoint(pos.latitude, pos.longitude);
-    // Save to Firestore for future use
+
     if (uid != null) {
       FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .update({'location': geoPoint})
+          .set({'location': geoPoint}, SetOptions(merge: true))
           .catchError((_) {});
     }
+
     return geoPoint;
   } catch (_) {
     return fallback;
